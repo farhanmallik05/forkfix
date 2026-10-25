@@ -132,7 +132,10 @@ class ForkfixOrchestrator:
         ]
 
         for step_idx in range(max_steps):
-            reply, cost, _ = await self.nemotron.ask(tier, messages, think=False)
+            from .prompt_engine import AdaptiveTemperatureScheduler
+            temp = AdaptiveTemperatureScheduler.get_temperature(step_idx, tier)
+
+            reply, cost, _ = await self.nemotron.ask(tier, messages, think=False, temperature=temp)
             spent += cost
             messages.append({"role": "assistant", "content": reply})
 
@@ -177,7 +180,14 @@ class ForkfixOrchestrator:
                 )
             )
 
-            messages.append({"role": "user", "content": obs})
+            # Check for Python AST/traceback errors and guide model
+            from .ast_parser import ASTErrorExtractor
+            diag = ASTErrorExtractor.parse_stderr(obs)
+            feedback = obs
+            if diag.get("has_errors") and diag.get("file") != "unknown":
+                feedback += f"\n\n[Diagnostic Alert]: {diag.get('error_type')} detected in {diag.get('file')} line {diag.get('line')}: {diag.get('message')}"
+
+            messages.append({"role": "user", "content": feedback})
             if spent >= budget_dollars:
                 break
 
@@ -220,7 +230,9 @@ class ForkfixOrchestrator:
         return [r for r in results if isinstance(r, dict)]
 
     async def evaluate_winner(self, runs: list[dict[str, Any]]) -> dict[str, Any] | None:
-        """Verifies each branch against the repro test. Returns smallest passing diff."""
+        """Verifies each branch against the repro test. Returns highest-quality passing diff."""
+        from .patch_scorer import PatchScorer
+
         async def verify_run(run: dict[str, Any]) -> bool:
             if not run.get("patch", "").strip():
                 return False
@@ -233,8 +245,14 @@ class ForkfixOrchestrator:
 
         if not passing_runs:
             return None
-        # Select patch with smallest length
-        return min(passing_runs, key=lambda r: len(r["patch"]))
+
+        # Score passing patches for surgical quality and cleanliness
+        for r in passing_runs:
+            evaluation = PatchScorer.evaluate_patch(r["patch"])
+            r["patch_quality"] = evaluation
+
+        # Rank by score descending, then length ascending
+        return max(passing_runs, key=lambda r: (r.get("patch_quality", {}).get("score", 0), -len(r["patch"])))
 
     async def execute_fix(
         self,
