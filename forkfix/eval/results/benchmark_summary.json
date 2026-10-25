@@ -1,9 +1,9 @@
 {
-  "timestamp": 1792959171.3753805,
-  "total_tasks": 5,
+  "timestamp": 1792960920.9225557,
+  "total_tasks": 10,
   "resolved_tasks": 0,
   "resolve_rate_percent": 0.0,
-  "total_cost_dollars": 0.0386,
+  "total_cost_dollars": 0.0772,
   "avg_cost_per_task": 0.0077,
   "cost_per_resolved_task": 0,
   "ultra_only_baseline_cost_per_task": 0.48,
@@ -14,7 +14,7 @@
       "repo": "django/django",
       "status": "unresolved",
       "total_cost": 0.0077249999999999975,
-      "elapsed_seconds": 15.88,
+      "elapsed_seconds": 21.04,
       "patch_size": 0
     },
     {
@@ -22,7 +22,7 @@
       "repo": "sympy/sympy",
       "status": "unresolved",
       "total_cost": 0.0077249999999999975,
-      "elapsed_seconds": 15.47,
+      "elapsed_seconds": 20.4,
       "patch_size": 0
     },
     {
@@ -30,7 +30,7 @@
       "repo": "pytest-dev/pytest",
       "status": "unresolved",
       "total_cost": 0.0077249999999999975,
-      "elapsed_seconds": 15.23,
+      "elapsed_seconds": 25.58,
       "patch_size": 0
     },
     {
@@ -38,7 +38,7 @@
       "repo": "scikit-learn/scikit-learn",
       "status": "unresolved",
       "total_cost": 0.0077249999999999975,
-      "elapsed_seconds": 14.97,
+      "elapsed_seconds": 19.64,
       "patch_size": 0
     },
     {
@@ -46,7 +46,47 @@
       "repo": "pallets/flask",
       "status": "unresolved",
       "total_cost": 0.0077249999999999975,
-      "elapsed_seconds": 15.18,
+      "elapsed_seconds": 20.15,
+      "patch_size": 0
+    },
+    {
+      "task_id": "psf__requests-2931",
+      "repo": "psf/requests",
+      "status": "unresolved",
+      "total_cost": 0.0077249999999999975,
+      "elapsed_seconds": 18.07,
+      "patch_size": 0
+    },
+    {
+      "task_id": "sphinx-doc__sphinx-8721",
+      "repo": "sphinx-doc/sphinx",
+      "status": "unresolved",
+      "total_cost": 0.0077249999999999975,
+      "elapsed_seconds": 17.79,
+      "patch_size": 0
+    },
+    {
+      "task_id": "tornadoweb__tornado-2965",
+      "repo": "tornadoweb/tornado",
+      "status": "unresolved",
+      "total_cost": 0.0077249999999999975,
+      "elapsed_seconds": 17.65,
+      "patch_size": 0
+    },
+    {
+      "task_id": "astropy__astropy-14182",
+      "repo": "astropy/astropy",
+      "status": "unresolved",
+      "total_cost": 0.0077249999999999975,
+      "elapsed_seconds": 17.23,
+      "patch_size": 0
+    },
+    {
+      "task_id": "matplotlib__matplotlib-23913",
+      "repo": "matplotlib/matplotlib",
+      "status": "unresolved",
+      "total_cost": 0.0077249999999999975,
+      "elapsed_seconds": 12.67,
       "patch_size": 0
     }
   ]

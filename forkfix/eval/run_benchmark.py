@@ -24,6 +24,11 @@ BENCHMARK_TASKS = [
     {"task_id": "pytest-dev__pytest-7234", "repo": "pytest-dev/pytest", "issue": "Pytest AST rewriting failure when assertion contains walrus operator."},
     {"task_id": "scikit-learn__scikit-learn-14092", "repo": "scikit-learn/scikit-learn", "issue": "NCA fails when target labels are non-consecutive integers."},
     {"task_id": "pallets__flask-4045", "repo": "pallets/flask", "issue": "Blueprint url_value_preprocessor not called for nested blueprints."},
+    {"task_id": "psf__requests-2931", "repo": "psf/requests", "issue": "SSL verification timeout raises unhandled ConnectionError instead of ConnectTimeout."},
+    {"task_id": "sphinx-doc__sphinx-8721", "repo": "sphinx-doc/sphinx", "issue": "viewcode extension produces broken link targets on overloaded function signatures."},
+    {"task_id": "tornadoweb__tornado-2965", "repo": "tornadoweb/tornado", "issue": "WebSocket ping/pong frame interval race condition terminates active client."},
+    {"task_id": "astropy__astropy-14182", "repo": "astropy/astropy", "issue": "QTable format parsing fails when table contains Quantity columns with unitless floats."},
+    {"task_id": "matplotlib__matplotlib-23913", "repo": "matplotlib/matplotlib", "issue": "Legend draggable cursor clipping on secondary twinx axes."},
 ]
 
 RESULTS_DIR = Path(__file__).resolve().parent / "results"
