@@ -49,7 +49,7 @@ class EscalationTriggeredEvent(BaseEvent):
     event_type: Literal["escalation_triggered"] = "escalation_triggered"
     reason: str
     tavily_queries: list[str]
-    tavily_citations: list[dict[str, str]]
+    tavily_citations: list[dict[str, Any]]
     ultra_diagnosis: str
 
 

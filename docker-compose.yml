@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: forkfix/backend/Dockerfile
+    container_name: forkfix-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - NEBIUS_API_KEY=${NEBIUS_API_KEY}
+      - TAVILY_API_KEY=${TAVILY_API_KEY}
+      - SANDBOX_ENGINE=docker
+      - FORKFIX_ENV=production
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - forkfix-data:/app/data
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: forkfix/frontend
+      dockerfile: Dockerfile
+    container_name: forkfix-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  forkfix-data:

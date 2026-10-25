@@ -182,6 +182,25 @@ class Database:
                 (run_id, event_type, json.dumps(payload), now),
             )
 
+    log_event = record_event
+
+    def get_run_events(self, run_id: str) -> list[dict[str, Any]]:
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM events WHERE run_id = ? ORDER BY id ASC",
+                (run_id,),
+            ).fetchall()
+            events = []
+            for r in rows:
+                item = dict(r)
+                if isinstance(item.get("payload"), str):
+                    try:
+                        item["payload"] = json.loads(item["payload"])
+                    except Exception:
+                        pass
+                events.append(item)
+            return events
+
     def get_run(self, run_id: str) -> dict[str, Any] | None:
         with self._get_connection() as conn:
             row = conn.execute("SELECT * FROM runs WHERE run_id = ?", (run_id,)).fetchone()
