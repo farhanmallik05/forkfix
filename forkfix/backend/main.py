@@ -171,6 +171,27 @@ async def get_run_details(run_id: str):
     return run
 
 
+@app.get("/api/runs/{run_id}/tavily")
+async def get_run_tavily_evidence(run_id: str):
+    """Retrieve Tavily research queries, citations, and anti-leakage audit trail for a run."""
+    log_file = Path("runs") / run_id / "events.jsonl"
+    if not log_file.exists():
+        raise HTTPException(status_code=404, detail="Run log not found")
+
+    tavily_events = []
+    with open(log_file, "r", encoding="utf-8") as f:
+        for line in f:
+            if line.strip():
+                ev = json.loads(line)
+                if ev.get("event_type") == "escalation_triggered":
+                    tavily_events.append(ev)
+
+    if not tavily_events:
+        return {"run_id": run_id, "escalated": False, "message": "Run solved by fast tier without escalation"}
+
+    return {"run_id": run_id, "escalated": True, "tavily_research": tavily_events[-1]}
+
+
 @app.delete("/api/runs/{run_id}", dependencies=[Depends(verify_admin_key)])
 async def delete_run(run_id: str):
     """Delete a run from persistent database."""
