@@ -12,6 +12,12 @@ TRACEBACK_PATTERN = re.compile(
 SYNTAX_ERROR_PATTERN = re.compile(
     r'File\s+"(?P<file>[^"]+)",\s+line\s+(?P<line>\d+)(?:[\s\S]*?)(?P<error_type>SyntaxError|IndentationError|TabError):\s*(?P<msg>.*)'
 )
+FRAME_PATTERN = re.compile(
+    r'File\s+"(?P<file>[^"]+)",\s+line\s+(?P<line>\d+)(?:,\s+in\s+(?P<func>\w+))?'
+)
+EXCEPTION_LINE_PATTERN = re.compile(
+    r'(?P<error_type>[A-Za-z]+Error|AssertionError|Exception):\s*(?P<msg>.*)'
+)
 
 
 class ASTErrorExtractor:
@@ -58,3 +64,27 @@ class ASTErrorExtractor:
             }
 
         return {"has_errors": False}
+
+    @staticmethod
+    def slice_traceback(stderr: str) -> list[dict[str, Any]]:
+        """Slices full traceback into structured frames, isolating application frames from site-packages."""
+        frames = []
+        err_type = "Exception"
+        err_msg = ""
+        exc_match = EXCEPTION_LINE_PATTERN.search(stderr)
+        if exc_match:
+            err_type = exc_match.group("error_type")
+            err_msg = exc_match.group("msg").strip()
+
+        for match in FRAME_PATTERN.finditer(stderr):
+            file_path = match.group("file")
+            is_lib = "site-packages" in file_path or "/usr/lib" in file_path
+            frames.append({
+                "file": file_path,
+                "line": int(match.group("line")),
+                "function": match.group("func") or "global",
+                "error_type": err_type,
+                "message": err_msg,
+                "is_library": is_lib,
+            })
+        return frames

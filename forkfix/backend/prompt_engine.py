@@ -23,6 +23,21 @@ class AdaptiveTemperatureScheduler:
             # Broad divergent search when early attempts have stalled
             return 0.85
 
+    @staticmethod
+    def anneal_temperature(base_temp: float, failure_count: int, is_syntax_error: bool = False) -> float:
+        """Dynamically anneals temperature based on error type and consecutive retry count."""
+        if is_syntax_error:
+            # Enforce deterministic token output on invalid code syntax
+            return 0.15
+
+        if failure_count == 0:
+            return round(base_temp, 2)
+        elif failure_count in (1, 2):
+            return 0.50
+        else:
+            # Broaden search space if stuck in a dead-end
+            return 0.75
+
 
 class PromptEngine:
     @staticmethod
@@ -64,3 +79,49 @@ class PromptEngine:
             messages.append({"role": "user", "content": entry.get("out", "")})
 
         return messages
+
+    @staticmethod
+    def build_4way_hypothesis_prompts(
+        issue_text: str,
+        traceback_info: dict[str, Any] | None = None,
+        tavily_citations: str = "",
+    ) -> list[dict[str, str]]:
+        """Generates 4 distinct hypothesis prompts for parallel reality branching.
+        
+        Branches:
+        1. Boundary & Off-by-one Edge Cases
+        2. Type Coercion & Null Safety Guards
+        3. Upstream API Drift & Deprecated Method Adaptation
+        4. Exception Hierarchy & Error Propagation Handling
+        """
+        strategies = [
+            ("Branch-Alpha", "Focus on boundary conditions, empty collections, slice bounds, and off-by-one logic."),
+            ("Branch-Beta", "Focus on strict type verification, NoneType guards, and defensive cast checks."),
+            ("Branch-Gamma", "Focus on library version drift, renamed parameters, or signature compatibility."),
+            ("Branch-Delta", "Focus on exception swallowing, missing re-raise statements, and error fallback handlers."),
+        ]
+
+        prompts = []
+        err_msg = ""
+        if traceback_info and traceback_info.get("has_errors"):
+            err_msg = f"\nFailing Location: {traceback_info.get('file')}:{traceback_info.get('line')} ({traceback_info.get('error_type')}: {traceback_info.get('message')})"
+
+        for branch_name, strategy in strategies:
+            prompt_content = (
+                f"### Task: Bug Resolution via Parallel Reality Branching\n"
+                f"**Branch Identity:** `{branch_name}`\n"
+                f"**Branch Mandate:** {strategy}\n\n"
+                f"**Issue Description:**\n{issue_text}\n"
+                f"{err_msg}\n\n"
+            )
+            if tavily_citations:
+                prompt_content += f"**Verified Documentation Evidence:**\n{tavily_citations}\n\n"
+
+            prompt_content += "Synthesize a minimal, robust patch following strictly your assigned branch mandate."
+            prompts.append({
+                "branch_name": branch_name,
+                "strategy": strategy,
+                "prompt": prompt_content,
+            })
+
+        return prompts

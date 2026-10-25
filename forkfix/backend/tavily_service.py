@@ -9,7 +9,13 @@ try:
 except ImportError:
     AsyncTavilyClient = None
 
-DEFAULT_EXCLUSIONS = ["github.com", "gitlab.com", "bitbucket.org"]
+DEFAULT_EXCLUSIONS = [
+    "github.com",
+    "gitlab.com",
+    "bitbucket.org",
+    "swebench.com",
+    "huggingface.co/datasets/princeton-nlp/SWE-bench",
+]
 
 
 class TavilyService:
@@ -136,3 +142,24 @@ class TavilyService:
             "elapsed_seconds": 0.45,
             "total_sources_found": 2,
         }
+
+    @staticmethod
+    def format_markdown_citations(research_results: dict[str, Any]) -> str:
+        """Formats research findings into clean markdown citations with confidence badges."""
+        citations = research_results.get("citations", [])
+        if not citations:
+            return "_No external documentation citations found._"
+
+        lines = ["### Verified External Documentation & Technical Citations\n"]
+        for idx, item in enumerate(citations, 1):
+            title = item.get("title", "Reference Guide")
+            url = item.get("url", "#")
+            score = item.get("score", 0.85)
+            content = item.get("content", "").strip()
+            score_badge = f"`[Relevance: {int(score * 100)}%]`"
+            lines.append(f"{idx}. [{title}]({url}) {score_badge}")
+            if content:
+                snippet = content[:200].replace("\n", " ") + "..."
+                lines.append(f"   > _{snippet}_\n")
+
+        return "\n".join(lines)
