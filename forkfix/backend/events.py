@@ -96,14 +96,63 @@ class EventEmitter:
             self.queues.remove(q)
 
     async def emit(self, event: BaseModel | dict[str, Any]):
-        data = event.model_dump() if isinstance(event, BaseModel) else event
+        data = event.model_dump() if isinstance(event, BaseModel) else dict(event)
+
+        # Sanitize any output or payload strings
+        from .security import CommandSanitizer
+        if "output" in data and isinstance(data["output"], str):
+            data["output"] = CommandSanitizer.sanitize_logs(data["output"])
 
         # 1. Append to events.jsonl
         line = json.dumps(data) + "\n"
         with open(self.log_path, "a", encoding="utf-8") as f:
             f.write(line)
 
-        # 2. Dispatch to SSE subscribers
+        # 2. Record to SQLite database
+        try:
+            from .database import get_db
+            db = get_db()
+            event_type = data.get("event_type", "unknown")
+            db.record_event(self.run_id, event_type, data)
+
+            if event_type == "branch_spawned":
+                db.record_branch(
+                    run_id=self.run_id,
+                    branch_id=data.get("branch_id", ""),
+                    parent_checkpoint=data.get("parent_checkpoint", ""),
+                    tier=data.get("tier", "fast"),
+                    model=data.get("model", ""),
+                    hint=data.get("hint", ""),
+                )
+            elif event_type == "step_executed":
+                db.record_step(
+                    run_id=self.run_id,
+                    branch_id=data.get("branch_id", ""),
+                    step_idx=data.get("step_idx", 0),
+                    command=data.get("command", ""),
+                    output=data.get("output", ""),
+                    cost=data.get("cost", 0.0),
+                    snapshot_uuid=data.get("snapshot_uuid", ""),
+                )
+            elif event_type == "winner_selected":
+                db.update_run_status(
+                    run_id=self.run_id,
+                    status="resolved",
+                    total_cost=data.get("total_cost"),
+                    elapsed_seconds=data.get("elapsed_seconds"),
+                    winning_branch_id=data.get("winning_branch_id"),
+                    winning_patch=data.get("patch"),
+                )
+            elif event_type == "unresolved":
+                db.update_run_status(
+                    run_id=self.run_id,
+                    status="unresolved",
+                    total_cost=data.get("total_cost"),
+                )
+        except Exception:
+            pass  # Non-blocking database write
+
+        # 3. Dispatch to SSE subscribers
         for q in list(self.queues):
             try:
                 q.put_nowait(data)

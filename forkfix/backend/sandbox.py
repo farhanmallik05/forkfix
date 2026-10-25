@@ -177,7 +177,95 @@ class MockSandboxEngine:
 
 
 # -----------------------------------------------------------------------------
-# 3. Engine Factory
+# 3. Docker Sandbox Engine (Local Real Container Checkpointing)
+# -----------------------------------------------------------------------------
+class DockerSandboxSession:
+    def __init__(self, image_tag: str):
+        self.uuid = image_tag
+
+    async def run(
+        self,
+        shell: str,
+        cwd: str = "/testbed",
+        files: dict[str, bytes] | None = None,
+        disposable: bool = False,
+        timeout: int = 180,
+    ) -> ExecResult:
+        # 1. Inspect command safety
+        from .security import CommandSanitizer
+        is_safe, err_msg = CommandSanitizer.inspect_command(shell)
+        if not is_safe:
+            return ExecResult(stdout="", stderr=err_msg, exit_code=1, uuid=self.uuid)
+
+        # 2. Execute via docker container run
+        container_name = f"forkfix-{os.urandom(4).hex()}"
+        file_mounts = []
+        temp_dir = None
+
+        if files:
+            temp_dir = tempfile.mkdtemp(prefix="forkfix-files-")
+            for rel_path, data in files.items():
+                dest = Path(temp_dir) / rel_path.lstrip("/")
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                dest.write_bytes(data)
+            file_mounts = ["-v", f"{temp_dir}:{cwd}"]
+
+        cmd = [
+            "docker", "run", "--name", container_name,
+            "-w", cwd,
+            *file_mounts,
+            self.uuid,
+            "/bin/bash", "-c", shell,
+        ]
+
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout_b, stderr_b = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+            exit_code = proc.returncode or 0
+            stdout = stdout_b.decode("utf-8", errors="replace")
+            stderr = stderr_b.decode("utf-8", errors="replace")
+
+            new_uuid = self.uuid
+            if not disposable:
+                # Commit container to new snapshot image
+                new_uuid = f"forkfix-snap-{os.urandom(4).hex()}"
+                commit_proc = await asyncio.create_subprocess_exec(
+                    "docker", "commit", container_name, new_uuid,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                await commit_proc.communicate()
+                self.uuid = new_uuid
+
+            return ExecResult(stdout=stdout, stderr=stderr, exit_code=exit_code, uuid=new_uuid)
+
+        except asyncio.TimeoutError:
+            return ExecResult(stdout="", stderr=f"Command timed out after {timeout}s", exit_code=124, uuid=self.uuid)
+        except Exception as e:
+            return ExecResult(stdout="", stderr=str(e), exit_code=1, uuid=self.uuid)
+        finally:
+            # Clean up container
+            rm_proc = await asyncio.create_subprocess_exec(
+                "docker", "rm", "-f", container_name,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+            await rm_proc.communicate()
+            if temp_dir and os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+class DockerSandboxEngine:
+    async def use(self, image_uuid: str, strict: bool = True) -> SandboxSession:
+        return DockerSandboxSession(image_uuid)
+
+
+# -----------------------------------------------------------------------------
+# 4. Engine Factory
 # -----------------------------------------------------------------------------
 def get_sandbox_engine(engine_type: str | None = None) -> SandboxEngine:
     engine_name = (engine_type or os.getenv("SANDBOX_ENGINE", "mock")).lower()
@@ -185,6 +273,8 @@ def get_sandbox_engine(engine_type: str | None = None) -> SandboxEngine:
         try:
             return ContreeSandboxEngine()
         except Exception:
-            # Gracefully fallback to Mock if SDK / auth is not yet provisioned
             return MockSandboxEngine()
+    elif engine_name == "docker":
+        return DockerSandboxEngine()
     return MockSandboxEngine()
+

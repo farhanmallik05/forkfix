@@ -1,4 +1,4 @@
-"""FastAPI web and SSE streaming server for Forkfix."""
+"""FastAPI web and SSE streaming server for Forkfix with SQLite persistence and rate limiting."""
 
 from __future__ import annotations
 import asyncio
@@ -7,18 +7,24 @@ import os
 import uuid
 from pathlib import Path
 from typing import Any
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
+from .auth import check_rate_limit, verify_admin_key
+from .database import get_db
 from .events import EventEmitter
 from .nemotron import NemotronClient
 from .orchestrator import ForkfixOrchestrator
 from .sandbox import get_sandbox_engine
 from .tavily_service import TavilyService
 
-app = FastAPI(title="Forkfix API", version="0.1.0")
+app = FastAPI(
+    title="Forkfix API",
+    version="0.2.0",
+    description="Parallel Reality Debugging platform powered by Nebius Token Factory & NVIDIA Nemotron",
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -54,12 +60,16 @@ async def health_check():
         "engine": os.getenv("SANDBOX_ENGINE", "mock"),
         "has_nebius_key": bool(os.getenv("NEBIUS_API_KEY")),
         "has_tavily_key": bool(os.getenv("TAVILY_API_KEY")),
+        "database": "sqlite",
     }
 
 
-@app.post("/api/run")
+@app.post("/api/run", dependencies=[Depends(check_rate_limit)])
 async def start_run(req: RunRequest):
     run_id = f"run-{uuid.uuid4().hex[:8]}"
+    db = get_db()
+    db.create_run(run_id=run_id, issue_text=req.issue_text, base_image_uuid=req.base_image_uuid)
+
     emitter = EventEmitter(run_id=run_id)
     active_emitters[run_id] = emitter
 
@@ -115,7 +125,7 @@ async def stream_run(run_id: str, request: Request):
     return EventSourceResponse(event_generator())
 
 
-@app.post("/api/fork")
+@app.post("/api/fork", dependencies=[Depends(check_rate_limit)])
 async def fork_reality(req: ForkRequest):
     """Time Travel: Fork a new branch from any prior snapshot node with human hints."""
     emitter = active_emitters.get(req.run_id)
@@ -143,6 +153,36 @@ async def fork_reality(req: ForkRequest):
     return {"status": "forked", "branch_id": branch_id}
 
 
+@app.get("/api/runs")
+async def list_runs(limit: int = 50, offset: int = 0):
+    """List historical runs from persistent SQLite database."""
+    db = get_db()
+    runs = db.list_runs(limit=limit, offset=offset)
+    return {"runs": runs, "count": len(runs)}
+
+
+@app.get("/api/runs/{run_id}")
+async def get_run_details(run_id: str):
+    """Get single run audit details, branches, and steps."""
+    db = get_db()
+    run = db.get_run(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found in database")
+    return run
+
+
+@app.delete("/api/runs/{run_id}", dependencies=[Depends(verify_admin_key)])
+async def delete_run(run_id: str):
+    """Delete a run from persistent database."""
+    db = get_db()
+    deleted = db.delete_run(run_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Run not found")
+    if run_id in active_emitters:
+        del active_emitters[run_id]
+    return {"status": "deleted", "run_id": run_id}
+
+
 @app.get("/api/fixtures")
 async def list_fixtures():
     FIXTURES_DIR.mkdir(parents=True, exist_ok=True)
@@ -156,7 +196,6 @@ async def list_fixtures():
 async def get_fixture(fixture_name: str):
     target = FIXTURES_DIR / f"{fixture_name}.jsonl"
     if not target.exists():
-        # check direct match
         target = FIXTURES_DIR / fixture_name
     if not target.exists():
         raise HTTPException(status_code=404, detail="Fixture not found")
