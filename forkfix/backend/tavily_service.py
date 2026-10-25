@@ -4,8 +4,10 @@ from __future__ import annotations
 import asyncio
 import os
 import time
-from typing import Any
-from tavily import AsyncTavilyClient
+try:
+    from tavily import AsyncTavilyClient
+except ImportError:
+    AsyncTavilyClient = None
 
 DEFAULT_EXCLUSIONS = ["github.com", "gitlab.com", "bitbucket.org"]
 
@@ -13,8 +15,8 @@ DEFAULT_EXCLUSIONS = ["github.com", "gitlab.com", "bitbucket.org"]
 class TavilyService:
     def __init__(self, api_key: str | None = None):
         self.api_key = api_key or os.getenv("TAVILY_API_KEY", "")
-        self.client: AsyncTavilyClient | None = None
-        if self.api_key:
+        self.client: Any | None = None
+        if self.api_key and AsyncTavilyClient is not None:
             self.client = AsyncTavilyClient(api_key=self.api_key)
 
     @staticmethod

@@ -21,7 +21,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pytest-asyncio fastapi uvicorn pydantic httpx python-dotenv openai tavily-python aiofiles
+          pip install -r forkfix/backend/requirements.txt openai
 
       - name: Run Pytest Suite
         run: |
