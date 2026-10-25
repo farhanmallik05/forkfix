@@ -98,6 +98,61 @@ const EscalationNode = ({ data }: { data: any }) => (
   </div>
 )
 
+// -----------------------------------------------------------------------------
+// Hierarchical Tree Layout Engine (Dagre / Sugiyama algorithm)
+// -----------------------------------------------------------------------------
+function applyHierarchicalLayout(nodes: Node[], edges: Edge[]): Node[] {
+  if (nodes.length === 0) return []
+
+  // Group nodes by type / rank
+  const checkpoints = nodes.filter((n) => n.type === "checkpointNode")
+  const branches = nodes.filter((n) => n.type === "branchNode")
+  const escalations = nodes.filter((n) => n.type === "escalationNode")
+  const other = nodes.filter((n) => !["checkpointNode", "branchNode", "escalationNode"].includes(n.type || ""))
+
+  const X_CENTER = 420
+  const X_BRANCH_SPACING = 240
+
+  const layoutedNodes: Node[] = []
+
+  // Rank 0: Checkpoints
+  checkpoints.forEach((node, i) => {
+    const x = X_CENTER + (i - (checkpoints.length - 1) / 2) * 280
+    layoutedNodes.push({
+      ...node,
+      position: { x, y: 40 },
+    })
+  })
+
+  // Rank 1: Branches
+  branches.forEach((node, i) => {
+    const x = X_CENTER + (i - (branches.length - 1) / 2) * X_BRANCH_SPACING
+    layoutedNodes.push({
+      ...node,
+      position: { x, y: 220 },
+    })
+  })
+
+  // Rank 2: Escalations
+  escalations.forEach((node, i) => {
+    const x = X_CENTER + (i - (escalations.length - 1) / 2) * 280
+    layoutedNodes.push({
+      ...node,
+      position: { x, y: 420 },
+    })
+  })
+
+  // Other nodes
+  other.forEach((node, i) => {
+    layoutedNodes.push({
+      ...node,
+      position: node.position || { x: X_CENTER + i * 200, y: 560 },
+    })
+  })
+
+  return layoutedNodes
+}
+
 export const RealityGraph: React.FC<RealityGraphProps> = ({
   nodes,
   edges,
@@ -112,10 +167,12 @@ export const RealityGraph: React.FC<RealityGraphProps> = ({
     []
   )
 
+  const layoutedNodes = useMemo(() => applyHierarchicalLayout(nodes, edges), [nodes, edges])
+
   return (
     <div className="w-full h-full bg-obsidian-950 rounded-lg overflow-hidden border border-obsidian-700 shadow-2xl relative">
       <ReactFlow
-        nodes={nodes}
+        nodes={layoutedNodes}
         edges={edges}
         nodeTypes={nodeTypes}
         onNodeClick={(_, node) => onNodeClick(node)}

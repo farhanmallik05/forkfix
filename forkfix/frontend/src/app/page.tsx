@@ -9,6 +9,8 @@ import { TimeTravelModal } from "@/components/TimeTravelModal"
 import Link from "next/link"
 import { BranchComparator } from "@/components/BranchComparator"
 import { PRExportModal } from "@/components/PRExportModal"
+import { PatchEditorModal } from "@/components/PatchEditorModal"
+import { TreeExportModal } from "@/components/TreeExportModal"
 
 interface FixtureEvent {
   event_type: string
@@ -41,10 +43,37 @@ export default function ForkfixDashboard() {
   const [ultraDiagnosis, setUltraDiagnosis] = useState<string>("")
   const [selectedNode, setSelectedNode] = useState<Node | null>(null)
 
-  // Time Travel Modal
+  // Modals state
   const [isTimeTravelOpen, setIsTimeTravelOpen] = useState<boolean>(false)
   const [isComparatorOpen, setIsComparatorOpen] = useState<boolean>(false)
   const [isPRExportOpen, setIsPRExportOpen] = useState<boolean>(false)
+  const [isPatchEditorOpen, setIsPatchEditorOpen] = useState<boolean>(false)
+  const [isTreeExportOpen, setIsTreeExportOpen] = useState<boolean>(false)
+  const [editingBranchId, setEditingBranchId] = useState<string>("fast-b4")
+  const [editingPatch, setEditingPatch] = useState<string>("")
+
+  // Global Keyboard Shortcuts (Space: pause/play, Esc: close modals, t: tree, e: PR)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if (e.code === "Space") {
+        e.preventDefault()
+        setIsPlaying((prev) => !prev)
+      } else if (e.key === "Escape") {
+        setIsComparatorOpen(false)
+        setIsPRExportOpen(false)
+        setIsTimeTravelOpen(false)
+        setIsPatchEditorOpen(false)
+        setIsTreeExportOpen(false)
+      } else if (e.key.toLowerCase() === "t") {
+        setIsTreeExportOpen((prev) => !prev)
+      } else if (e.key.toLowerCase() === "e" && winningPatch) {
+        setIsPRExportOpen((prev) => !prev)
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [winningPatch])
 
   // Load Fixture Data
   useEffect(() => {
@@ -294,6 +323,14 @@ export default function ForkfixDashboard() {
           </Link>
 
           <button
+            onClick={() => setIsTreeExportOpen(true)}
+            className="px-2.5 py-1.5 rounded-lg bg-obsidian-850 hover:bg-obsidian-800 text-gray-300 hover:text-white border border-obsidian-700 text-xs transition flex items-center space-x-1.5"
+            title="Press 't' to open"
+          >
+            <span>🌲 Tree Diagram</span>
+          </button>
+
+          <button
             onClick={() => setIsComparatorOpen(true)}
             disabled={nodes.filter((n) => n.type === "branchNode").length < 2}
             className="px-2.5 py-1.5 rounded-lg bg-obsidian-850 hover:bg-obsidian-800 text-gray-300 hover:text-white border border-obsidian-700 text-xs transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center space-x-1.5"
@@ -302,12 +339,26 @@ export default function ForkfixDashboard() {
           </button>
 
           {winningPatch && (
-            <button
-              onClick={() => setIsPRExportOpen(true)}
-              className="px-3 py-1.5 rounded-lg bg-cyber-emerald/15 hover:bg-cyber-emerald/25 text-cyber-emerald font-semibold border border-cyber-emerald/40 text-xs transition flex items-center space-x-1.5 shadow-lg shadow-cyber-emerald/10"
-            >
-              <span>🚀 Export PR</span>
-            </button>
+            <>
+              <button
+                onClick={() => {
+                  setEditingBranchId(winningBranchId || "winning-branch")
+                  setEditingPatch(winningPatch)
+                  setIsPatchEditorOpen(true)
+                }}
+                className="px-2.5 py-1.5 rounded-lg bg-obsidian-850 hover:bg-obsidian-800 text-gray-300 hover:text-white border border-obsidian-700 text-xs transition flex items-center space-x-1.5"
+              >
+                <span>✏️ Edit Patch</span>
+              </button>
+
+              <button
+                onClick={() => setIsPRExportOpen(true)}
+                className="px-3 py-1.5 rounded-lg bg-cyber-emerald/15 hover:bg-cyber-emerald/25 text-cyber-emerald font-semibold border border-cyber-emerald/40 text-xs transition flex items-center space-x-1.5 shadow-lg shadow-cyber-emerald/10"
+                title="Press 'e' to open"
+              >
+                <span>🚀 Export PR</span>
+              </button>
+            </>
           )}
 
           <div className="flex items-center space-x-2 bg-obsidian-850 px-3 py-1 rounded-lg border border-obsidian-700 font-mono text-xs">
@@ -468,6 +519,29 @@ export default function ForkfixDashboard() {
         winningPatch={winningPatch}
         totalCost={totalCost}
         elapsedSeconds={elapsedSeconds}
+      />
+
+      {/* Interactive Branch Patch Editor Modal */}
+      <PatchEditorModal
+        isOpen={isPatchEditorOpen}
+        onClose={() => setIsPatchEditorOpen(false)}
+        branchId={editingBranchId}
+        initialPatch={editingPatch}
+        onApplyCustomPatch={(branchId, customPatch) => {
+          setWinningPatch(customPatch)
+          setTerminalLogs((prev) => [...prev, `[Patch Editor] Applied custom patch to ${branchId}:\n${customPatch.slice(0, 100)}...`])
+        }}
+      />
+
+      {/* Reality Tree Diagram Export Modal */}
+      <TreeExportModal
+        isOpen={isTreeExportOpen}
+        onClose={() => setIsTreeExportOpen(false)}
+        runId={selectedFixture}
+        issueText={selectedFixture === "events_django_31422" ? "Fix currency formatting in django sanitize_separators" : "Fix Sympify parse string error"}
+        nodes={nodes}
+        winningBranchId={winningBranchId}
+        totalCost={totalCost}
       />
     </div>
   )
