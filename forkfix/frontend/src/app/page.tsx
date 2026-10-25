@@ -6,6 +6,9 @@ import { RealityGraph } from "@/components/RealityGraph"
 import { DiffViewer } from "@/components/DiffViewer"
 import { TelemetryDrawer } from "@/components/TelemetryDrawer"
 import { TimeTravelModal } from "@/components/TimeTravelModal"
+import Link from "next/link"
+import { BranchComparator } from "@/components/BranchComparator"
+import { PRExportModal } from "@/components/PRExportModal"
 
 interface FixtureEvent {
   event_type: string
@@ -40,6 +43,8 @@ export default function ForkfixDashboard() {
 
   // Time Travel Modal
   const [isTimeTravelOpen, setIsTimeTravelOpen] = useState<boolean>(false)
+  const [isComparatorOpen, setIsComparatorOpen] = useState<boolean>(false)
+  const [isPRExportOpen, setIsPRExportOpen] = useState<boolean>(false)
 
   // Load Fixture Data
   useEffect(() => {
@@ -279,8 +284,32 @@ export default function ForkfixDashboard() {
           </select>
         </div>
 
-        {/* Right Telemetry Dial & Mode */}
-        <div className="flex items-center space-x-4">
+        {/* Action Controls & Telemetry */}
+        <div className="flex items-center space-x-3">
+          <Link
+            href="/benchmark"
+            className="px-2.5 py-1.5 rounded-lg bg-obsidian-850 hover:bg-obsidian-800 text-gray-300 hover:text-cyber-cyan border border-obsidian-700 text-xs transition flex items-center space-x-1.5"
+          >
+            <span>📊 SWE-bench Leaderboard</span>
+          </Link>
+
+          <button
+            onClick={() => setIsComparatorOpen(true)}
+            disabled={nodes.filter((n) => n.type === "branchNode").length < 2}
+            className="px-2.5 py-1.5 rounded-lg bg-obsidian-850 hover:bg-obsidian-800 text-gray-300 hover:text-white border border-obsidian-700 text-xs transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center space-x-1.5"
+          >
+            <span>⚖️ Compare Realities</span>
+          </button>
+
+          {winningPatch && (
+            <button
+              onClick={() => setIsPRExportOpen(true)}
+              className="px-3 py-1.5 rounded-lg bg-cyber-emerald/15 hover:bg-cyber-emerald/25 text-cyber-emerald font-semibold border border-cyber-emerald/40 text-xs transition flex items-center space-x-1.5 shadow-lg shadow-cyber-emerald/10"
+            >
+              <span>🚀 Export PR</span>
+            </button>
+          )}
+
           <div className="flex items-center space-x-2 bg-obsidian-850 px-3 py-1 rounded-lg border border-obsidian-700 font-mono text-xs">
             <span className="text-gray-400">Run Spend:</span>
             <span className="text-cyber-emerald font-bold">${totalCost.toFixed(4)}</span>
@@ -412,6 +441,34 @@ export default function ForkfixDashboard() {
           onFork={handleTimeTravelFork}
         />
       )}
+
+      {/* Parallel Reality Comparator Modal */}
+      <BranchComparator
+        isOpen={isComparatorOpen}
+        onClose={() => setIsComparatorOpen(false)}
+        branches={nodes
+          .filter((n) => n.type === "branchNode")
+          .map((n) => ({
+            id: n.id,
+            model: (n.data?.model as string) || "Nemotron-70B",
+            status: (n.data?.status as string) || "exploring",
+            stepCount: (n.data?.stepCount as number) || 0,
+            cost: (n.data?.cost as number) || 0,
+            patch: winningBranchId === n.id ? winningPatch : "",
+            trace: [],
+          }))}
+      />
+
+      {/* GitHub PR Export Studio Modal */}
+      <PRExportModal
+        isOpen={isPRExportOpen}
+        onClose={() => setIsPRExportOpen(false)}
+        taskTitle={selectedFixture.replace("events_", "").replace("_", "/")}
+        winningBranchId={winningBranchId}
+        winningPatch={winningPatch}
+        totalCost={totalCost}
+        elapsedSeconds={elapsedSeconds}
+      />
     </div>
   )
 }

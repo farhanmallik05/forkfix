@@ -1,13 +1,13 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useMemo } from "react"
 
 interface TelemetryDrawerProps {
   totalCost: number
   activeTab: "terminal" | "tavily" | "cost"
   onTabChange: (tab: "terminal" | "tavily" | "cost") => void
   terminalLogs: string[]
-  tavilyCitations: Array<{ title: string; url: string; content: string }>
+  tavilyCitations: Array<{ title: string; url: string; content: string; score?: number }>
   tavilyQueries: string[]
   ultraDiagnosis: string
   activeStepCommand?: string
@@ -23,45 +23,68 @@ export const TelemetryDrawer: React.FC<TelemetryDrawerProps> = ({
   ultraDiagnosis,
   activeStepCommand,
 }) => {
+  const [filterQuery, setFilterQuery] = useState("")
+  const [selectedCitation, setSelectedCitation] = useState<any | null>(null)
+
+  const filteredLogs = useMemo(() => {
+    if (!filterQuery.trim()) return terminalLogs
+    const q = filterQuery.toLowerCase()
+    return terminalLogs.filter((log) => log.toLowerCase().includes(q))
+  }, [terminalLogs, filterQuery])
+
   return (
-    <div className="flex flex-col h-full bg-obsidian-900 border border-obsidian-700 rounded-lg overflow-hidden shadow-2xl">
+    <div className="flex flex-col h-full bg-obsidian-900 border border-obsidian-700 rounded-lg overflow-hidden shadow-2xl relative">
       {/* Navigation tabs */}
-      <div className="flex items-center border-b border-obsidian-700 bg-obsidian-850 px-2 text-xs">
-        <button
-          onClick={() => onTabChange("terminal")}
-          className={`px-3 py-2.5 font-medium border-b-2 transition ${
-            activeTab === "terminal"
-              ? "border-cyber-emerald text-cyber-emerald bg-obsidian-800/60"
-              : "border-transparent text-gray-400 hover:text-gray-200"
-          }`}
-        >
-          Terminal Shell
-        </button>
-        <button
-          onClick={() => onTabChange("tavily")}
-          className={`px-3 py-2.5 font-medium border-b-2 transition flex items-center space-x-1.5 ${
-            activeTab === "tavily"
-              ? "border-cyber-violet text-cyber-violet bg-obsidian-800/60"
-              : "border-transparent text-gray-400 hover:text-gray-200"
-          }`}
-        >
-          <span>Tavily Evidence</span>
-          {tavilyCitations.length > 0 && (
-            <span className="w-4 h-4 rounded-full bg-cyber-violet/20 text-cyber-violet text-[10px] flex items-center justify-center font-bold">
-              {tavilyCitations.length}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => onTabChange("cost")}
-          className={`px-3 py-2.5 font-medium border-b-2 transition ${
-            activeTab === "cost"
-              ? "border-cyber-cyan text-cyber-cyan bg-obsidian-800/60"
-              : "border-transparent text-gray-400 hover:text-gray-200"
-          }`}
-        >
-          Token Economics
-        </button>
+      <div className="flex items-center justify-between border-b border-obsidian-700 bg-obsidian-850 px-2 text-xs">
+        <div className="flex items-center">
+          <button
+            onClick={() => onTabChange("terminal")}
+            className={`px-3 py-2.5 font-medium border-b-2 transition ${
+              activeTab === "terminal"
+                ? "border-cyber-emerald text-cyber-emerald bg-obsidian-800/60"
+                : "border-transparent text-gray-400 hover:text-gray-200"
+            }`}
+          >
+            Terminal Shell
+          </button>
+          <button
+            onClick={() => onTabChange("tavily")}
+            className={`px-3 py-2.5 font-medium border-b-2 transition flex items-center space-x-1.5 ${
+              activeTab === "tavily"
+                ? "border-cyber-violet text-cyber-violet bg-obsidian-800/60"
+                : "border-transparent text-gray-400 hover:text-gray-200"
+            }`}
+          >
+            <span>Tavily Evidence</span>
+            {tavilyCitations.length > 0 && (
+              <span className="w-4 h-4 rounded-full bg-cyber-violet/20 text-cyber-violet text-[10px] flex items-center justify-center font-bold">
+                {tavilyCitations.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => onTabChange("cost")}
+            className={`px-3 py-2.5 font-medium border-b-2 transition ${
+              activeTab === "cost"
+                ? "border-cyber-cyan text-cyber-cyan bg-obsidian-800/60"
+                : "border-transparent text-gray-400 hover:text-gray-200"
+            }`}
+          >
+            Token Economics
+          </button>
+        </div>
+
+        {activeTab === "terminal" && (
+          <div className="flex items-center pr-2">
+            <input
+              type="text"
+              placeholder="Filter logs..."
+              value={filterQuery}
+              onChange={(e) => setFilterQuery(e.target.value)}
+              className="bg-obsidian-950 border border-obsidian-700 rounded px-2 py-0.5 text-[11px] text-gray-300 placeholder-gray-600 focus:outline-none focus:border-cyber-emerald w-28"
+            />
+          </div>
+        )}
       </div>
 
       {/* Tab Contents */}
@@ -75,14 +98,27 @@ export const TelemetryDrawer: React.FC<TelemetryDrawerProps> = ({
               </div>
             )}
             <div className="space-y-1.5 text-gray-300">
-              {terminalLogs.length === 0 ? (
-                <div className="text-gray-500 italic">No shell commands executed yet...</div>
+              {filteredLogs.length === 0 ? (
+                <div className="text-gray-500 italic">No matching shell commands...</div>
               ) : (
-                terminalLogs.map((log, idx) => (
-                  <div key={idx} className="whitespace-pre-wrap leading-relaxed">
-                    {log}
-                  </div>
-                ))
+                filteredLogs.map((log, idx) => {
+                  const isErr = log.includes("AssertionError") || log.includes("SyntaxError") || log.includes("[exit=1]")
+                  const isSuccess = log.includes("[exit=0]") && !isErr
+                  return (
+                    <div
+                      key={idx}
+                      className={`whitespace-pre-wrap leading-relaxed p-1.5 rounded ${
+                        isErr
+                          ? "bg-cyber-crimson/10 border-l-2 border-cyber-crimson text-red-300"
+                          : isSuccess
+                          ? "bg-cyber-emerald/5 border-l-2 border-cyber-emerald text-emerald-300"
+                          : "border-l-2 border-transparent"
+                      }`}
+                    >
+                      {log}
+                    </div>
+                  )
+                })
               )}
             </div>
           </div>
@@ -107,28 +143,36 @@ export const TelemetryDrawer: React.FC<TelemetryDrawerProps> = ({
               </div>
               <div className="space-y-1">
                 {tavilyQueries.map((q, idx) => (
-                  <div key={idx} className="px-2.5 py-1.5 bg-obsidian-850 rounded border border-obsidian-700 text-cyber-cyan text-[11px]">
-                    🔍 {q}
+                  <div key={idx} className="px-2.5 py-1.5 bg-obsidian-850 rounded border border-obsidian-700 text-cyber-cyan text-[11px] flex items-center justify-between">
+                    <span>🔍 {q}</span>
+                    <span className="text-[10px] text-gray-500 font-sans">Multi-stage Lens #{idx+1}</span>
                   </div>
                 ))}
               </div>
             </div>
 
             <div>
-              <div className="text-gray-400 font-semibold mb-2">
-                External Documentation Sources (Anti-Leakage Exclusions Applied):
+              <div className="text-gray-400 font-semibold mb-2 flex items-center justify-between">
+                <span>External Documentation Sources:</span>
+                <span className="text-[10px] text-cyber-emerald font-sans">✓ Anti-Leakage Excluded</span>
               </div>
               <div className="space-y-2">
                 {tavilyCitations.map((c, idx) => (
-                  <div key={idx} className="p-3 bg-obsidian-850 rounded-lg border border-obsidian-700 hover:border-cyber-violet/50 transition">
-                    <a
-                      href={c.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-cyber-violet hover:underline font-semibold block mb-1 text-xs"
-                    >
-                      {c.title || c.url}
-                    </a>
+                  <div
+                    key={idx}
+                    onClick={() => setSelectedCitation(c)}
+                    className="p-3 bg-obsidian-850 rounded-lg border border-obsidian-700 hover:border-cyber-violet/50 transition cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-cyber-violet font-semibold text-xs truncate max-w-[280px]">
+                        {c.title || c.url}
+                      </span>
+                      {c.score && (
+                        <span className="text-[10px] font-mono text-cyber-cyan bg-cyber-cyan/10 px-1.5 py-0.5 rounded">
+                          {(c.score * 100).toFixed(0)}% match
+                        </span>
+                      )}
+                    </div>
                     <div className="text-gray-400 text-[11px] font-sans line-clamp-3">
                       {c.content}
                     </div>
@@ -188,6 +232,31 @@ export const TelemetryDrawer: React.FC<TelemetryDrawerProps> = ({
           </div>
         )}
       </div>
+
+      {/* Citation Detail Preview Modal */}
+      {selectedCitation && (
+        <div className="absolute inset-0 bg-obsidian-950/95 backdrop-blur-sm p-4 z-30 flex flex-col animate-in fade-in duration-150">
+          <div className="flex items-center justify-between pb-2 border-b border-obsidian-700">
+            <span className="font-semibold text-white truncate max-w-[280px]">
+              {selectedCitation.title}
+            </span>
+            <button
+              onClick={() => setSelectedCitation(null)}
+              className="text-gray-400 hover:text-white transition text-xs p-1"
+            >
+              ✕ Close
+            </button>
+          </div>
+          <div className="text-[11px] text-cyber-violet truncate py-1.5 font-mono">
+            <a href={selectedCitation.url} target="_blank" rel="noreferrer" className="hover:underline">
+              {selectedCitation.url} ↗
+            </a>
+          </div>
+          <div className="flex-1 overflow-auto bg-obsidian-900 border border-obsidian-800 rounded-lg p-3 text-xs font-sans text-gray-300 leading-relaxed whitespace-pre-wrap">
+            {selectedCitation.content}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
