@@ -1,0 +1,53 @@
+{
+  "timestamp": 1792954971.6351902,
+  "total_tasks": 5,
+  "resolved_tasks": 0,
+  "resolve_rate_percent": 0.0,
+  "total_cost_dollars": 0.0386,
+  "avg_cost_per_task": 0.0077,
+  "cost_per_resolved_task": 0,
+  "ultra_only_baseline_cost_per_task": 0.48,
+  "cost_reduction_factor": 62.1,
+  "task_details": [
+    {
+      "task_id": "django__django-31422",
+      "repo": "django/django",
+      "status": "unresolved",
+      "total_cost": 0.0077249999999999975,
+      "elapsed_seconds": 13.36,
+      "patch_size": 0
+    },
+    {
+      "task_id": "sympy__sympy-18059",
+      "repo": "sympy/sympy",
+      "status": "unresolved",
+      "total_cost": 0.0077249999999999975,
+      "elapsed_seconds": 13.35,
+      "patch_size": 0
+    },
+    {
+      "task_id": "pytest-dev__pytest-7234",
+      "repo": "pytest-dev/pytest",
+      "status": "unresolved",
+      "total_cost": 0.0077249999999999975,
+      "elapsed_seconds": 12.49,
+      "patch_size": 0
+    },
+    {
+      "task_id": "scikit-learn__scikit-learn-14092",
+      "repo": "scikit-learn/scikit-learn",
+      "status": "unresolved",
+      "total_cost": 0.0077249999999999975,
+      "elapsed_seconds": 13.68,
+      "patch_size": 0
+    },
+    {
+      "task_id": "pallets__flask-4045",
+      "repo": "pallets/flask",
+      "status": "unresolved",
+      "total_cost": 0.0077249999999999975,
+      "elapsed_seconds": 9.55,
+      "patch_size": 0
+    }
+  ]
+}
