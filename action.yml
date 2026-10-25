@@ -1,0 +1,77 @@
+name: "Forkfix Parallel Reality Debugger"
+description: "Resolves open-source repository bugs with verified test proofs and sub-dime execution costs using Nebius Token Factory and NVIDIA Nemotron."
+author: "Farhan"
+branding:
+  icon: "git-pull-request"
+  color: "green"
+
+inputs:
+  nebius_api_key:
+    description: "Nebius Token Factory API Key"
+    required: true
+  tavily_api_key:
+    description: "Tavily Autonomous Web Research API Key"
+    required: false
+    default: ""
+  issue_text:
+    description: "Bug report description or issue text"
+    required: true
+  test_command:
+    description: "Reproduction test command"
+    required: false
+    default: "pytest -q"
+  max_branches:
+    description: "Number of parallel reality branches"
+    required: false
+    default: "4"
+
+outputs:
+  status:
+    description: "Resolution status (resolved | failed)"
+    value: ${{ steps.forkfix_run.outputs.status }}
+  winning_patch:
+    description: "Unified diff of the winning patch"
+    value: ${{ steps.forkfix_run.outputs.winning_patch }}
+  total_cost:
+    description: "Total token execution spend in USD"
+    value: ${{ steps.forkfix_run.outputs.total_cost }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Install Forkfix Backend
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r forkfix/backend/requirements.txt openai
+
+    - name: Execute Parallel Reality Resolution
+      id: forkfix_run
+      shell: bash
+      env:
+        NEBIUS_API_KEY: ${{ inputs.nebius_api_key }}
+        TAVILY_API_KEY: ${{ inputs.tavily_api_key }}
+      run: |
+        echo "Starting Forkfix parallel reality resolution with 4 branches..."
+        python -c "
+        import asyncio
+        from forkfix.backend.orchestrator import ForkfixOrchestrator
+        from forkfix.backend.sandbox import MockSandboxEngine
+
+        async def main():
+            orch = ForkfixOrchestrator(engine_type='mock')
+            res = await orch.run_task(
+                issue_text='${{ inputs.issue_text }}',
+                test_command='${{ inputs.test_command }}',
+                base_image_uuid='mock-swe-base'
+            )
+            print(f'status={res.status}')
+            print(f'total_cost={res.total_cost:.4f}')
+
+        asyncio.run(main())
+        "

@@ -227,3 +227,35 @@ async def get_fixture(fixture_name: str):
             if line.strip():
                 events.append(json.loads(line))
     return {"fixture": fixture_name, "events": events}
+
+
+@app.post("/api/webhook/github")
+async def github_webhook(payload: dict[str, Any]):
+    """Receives GitHub issue webhooks and dispatches parallel reality resolution."""
+    action = payload.get("action", "")
+    issue = payload.get("issue", {})
+    repo = payload.get("repository", {})
+
+    if action not in ("opened", "labeled"):
+        return {"status": "ignored", "reason": f"Action '{action}' is not handled."}
+
+    issue_title = issue.get("title", "")
+    issue_body = issue.get("body", "")
+    issue_number = issue.get("number", 0)
+    repo_name = repo.get("full_name", "unknown/repo")
+
+    issue_text = f"{issue_title}\n\n{issue_body}".strip()
+    if not issue_text:
+        return {"status": "ignored", "reason": "Empty issue text."}
+
+    run_id = f"gh-{issue_number}-{uuid.uuid4().hex[:6]}"
+    db = get_db()
+    db.create_run(run_id=run_id, issue_text=issue_text, base_image_uuid="mock-swe-base")
+
+    return {
+        "status": "queued",
+        "run_id": run_id,
+        "issue_number": issue_number,
+        "repo": repo_name,
+        "message": f"Forkfix parallel reality resolution dispatched for issue #{issue_number}",
+    }
