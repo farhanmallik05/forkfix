@@ -1,5 +1,7 @@
 # Forkfix ⚡
 
+![Forkfix Hero Banner](assets/forkfix_hero_banner.jpg)
+
 > **Parallel Reality Debugging on Open Infrastructure**  
 > *Submitted to the Nebius x NVIDIA Global AI Hackathon (Coding and Agentic Engineering Track)*
 
