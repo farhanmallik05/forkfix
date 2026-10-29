@@ -4,7 +4,7 @@
 > **Track:** Coding and Agentic Engineering ($50,000 Grand Prize)  
 > **Eligible Sponsor Tracks:** Best Use of Tavily ($3,000), Most Valuable Feedback ($100)  
 > **Live Demo:** [https://forkfix.vercel.app](https://forkfix.vercel.app) *(Verified Replay Mode Active by Default)*  
-> **GitHub Repository:** [https://github.com/farhan/forkfix](https://github.com/farhan/forkfix) *(Apache-2.0 License)*  
+> **GitHub Repository:** [https://github.com/farhanmallik05/forkfix](https://github.com/farhanmallik05/forkfix) *(Apache-2.0 License)*  
 > **Demo Video:** [https://youtu.be/forkfix-demo](https://youtu.be/forkfix-demo) *(3-minute public walkthrough)*
 
 ---
@@ -100,7 +100,7 @@ Forkfix replaces brittle linear agent self-correction with **Parallel Reality De
 * **NVIDIA Nemotron Speed:** Nemotron-3.5-Lightning runs at a blistering 140 tok/s on Nebius Token Factory, making parallel 4-branch generation faster than a single sequential turn of a monolithic frontier model.
 * **Contree Sandboxes:** Instant copy-on-write snapshot forks (120ms to 240ms) make branch exploration genuinely viable.
 * **Tavily Query Decomposition:** Decomposing errors into three distinct lenses (Stack signature, API drift, Workarounds) yields 3.4x higher relevance than raw error dumping.
-* Full quantitative benchmarks, TTFT metrics, and SDK recommendations are documented in [`forkfix/FEEDBACK.md`](https://github.com/farhan/forkfix/blob/main/forkfix/FEEDBACK.md).
+* Full quantitative benchmarks, TTFT metrics, and SDK recommendations are documented in [`forkfix/FEEDBACK.md`](https://github.com/farhanmallik05/forkfix/blob/main/forkfix/FEEDBACK.md).
 
 ---
 
@@ -121,5 +121,5 @@ Forkfix replaces brittle linear agent self-correction with **Parallel Reality De
 * **Anti-Leakage Guarantees:** Includes strict domain exclusions (`github.com`, `gitlab.com`, `swebench.com`) to prevent fetching ground-truth test fixes or pull requests, guaranteeing authentic autonomous debugging.
 
 ### Track 2: Most Valuable Feedback ($100 Cash + Swag)
-* **Feedback Document:** See full document at [`forkfix/FEEDBACK.md`](https://github.com/farhan/forkfix/blob/main/forkfix/FEEDBACK.md).
+* **Feedback Document:** See full document at [`forkfix/FEEDBACK.md`](https://github.com/farhanmallik05/forkfix/blob/main/forkfix/FEEDBACK.md).
 * **Key Content:** Detailed quantitative benchmarks on tokens/second throughput across Nemotron Lightning (140 tok/s), Super (75 tok/s), and Ultra (38 tok/s), Contree SDK snapshot latencies (120–240ms), and 4 actionable SDK improvement recommendations for Nebius and Tavily.
