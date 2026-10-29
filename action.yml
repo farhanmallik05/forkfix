@@ -24,6 +24,10 @@ inputs:
     description: "Number of parallel reality branches"
     required: false
     default: "4"
+  sandbox_engine:
+    description: "Sandbox implementation (mock, docker, or contree)"
+    required: false
+    default: "mock"
 
 outputs:
   status:
@@ -48,30 +52,20 @@ runs:
       shell: bash
       run: |
         python -m pip install --upgrade pip
-        pip install -r forkfix/backend/requirements.txt openai
+        pip install -r forkfix/backend/requirements.txt
 
     - name: Execute Parallel Reality Resolution
       id: forkfix_run
       shell: bash
       env:
+        PYTHONPATH: "${{ github.action_path }}:."
         NEBIUS_API_KEY: ${{ inputs.nebius_api_key }}
         TAVILY_API_KEY: ${{ inputs.tavily_api_key }}
+        SANDBOX_ENGINE: ${{ inputs.sandbox_engine }}
+        FORKFIX_ISSUE_TEXT: ${{ inputs.issue_text }}
       run: |
-        echo "Starting Forkfix parallel reality resolution with 4 branches..."
-        python -c "
-        import asyncio
-        from forkfix.backend.orchestrator import ForkfixOrchestrator
-        from forkfix.backend.sandbox import MockSandboxEngine
-
-        async def main():
-            orch = ForkfixOrchestrator(engine_type='mock')
-            res = await orch.run_task(
-                issue_text='${{ inputs.issue_text }}',
-                test_command='${{ inputs.test_command }}',
-                base_image_uuid='mock-swe-base'
-            )
-            print(f'status={res.status}')
-            print(f'total_cost={res.total_cost:.4f}')
-
-        asyncio.run(main())
-        "
+        echo "Starting Forkfix parallel reality resolution with ${{ inputs.max_branches }} branches..."
+        python -m forkfix.action_runner \
+          --issue-text "$FORKFIX_ISSUE_TEXT" \
+          --engine "$SANDBOX_ENGINE" \
+          --max-branches "${{ inputs.max_branches }}"

@@ -67,13 +67,22 @@ ${winningPatch}
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-6">
-      <div className="w-full max-w-3xl bg-obsidian-900 border border-obsidian-700 rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pr-export-title"
+        className="w-full max-w-3xl bg-obsidian-900 border border-obsidian-700 rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+      >
         <div className="flex items-center justify-between px-6 py-4 border-b border-obsidian-700 bg-obsidian-850">
           <div className="flex items-center space-x-2">
-            <span className="text-cyber-emerald text-xl">🚀</span>
-            <h3 className="font-bold text-white text-base">Export GitHub Pull Request</h3>
+            <span className="text-cyber-emerald text-xl" aria-hidden="true">🚀</span>
+            <h3 id="pr-export-title" className="font-bold text-white text-base">Export GitHub Pull Request</h3>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white transition p-1 text-sm">
+          <button
+            aria-label="Close export dialog"
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition p-1 text-sm"
+          >
             ✕
           </button>
         </div>

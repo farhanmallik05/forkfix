@@ -8,6 +8,8 @@ interface PatchEditorModalProps {
   onClose: () => void
   branchId: string
   initialPatch: string
+  snapshotUuid?: string
+  onVerifyPatch?: (patch: string, snapshotUuid: string) => Promise<{ verified: boolean; output?: string }>
   onApplyCustomPatch?: (branchId: string, customPatch: string) => void
 }
 
@@ -16,6 +18,8 @@ export function PatchEditorModal({
   onClose,
   branchId,
   initialPatch,
+  snapshotUuid,
+  onVerifyPatch,
   onApplyCustomPatch,
 }: PatchEditorModalProps) {
   const [patchText, setPatchText] = useState(initialPatch || "")
@@ -31,16 +35,27 @@ export function PatchEditorModal({
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const handleRunInSandbox = () => {
+  const handleRunInSandbox = async () => {
     setSimulating(true)
     setSimResult(null)
-    setTimeout(() => {
-      setSimulating(false)
-      setSimResult("Verification Passed: 1 passed in 0.12s (Exit code: 0)")
-      if (onApplyCustomPatch) {
-        onApplyCustomPatch(branchId, patchText)
+    try {
+      if (!onVerifyPatch || !snapshotUuid) {
+        setSimResult("Draft saved locally. Switch to Live Sandbox to run a real oracle.")
+        onApplyCustomPatch?.(branchId, patchText)
+        return
       }
-    }, 800)
+      const result = await onVerifyPatch(patchText, snapshotUuid)
+      if (result.verified) {
+        setSimResult(`Verification Passed: exit code 0${result.output ? ` — ${result.output.slice(-120)}` : ""}`)
+        onApplyCustomPatch?.(branchId, patchText)
+      } else {
+        setSimResult(`Verification rejected: ${result.output?.slice(-240) || "candidate did not pass the oracle"}`)
+      }
+    } catch (error) {
+      setSimResult(error instanceof Error ? error.message : "Sandbox verification failed")
+    } finally {
+      setSimulating(false)
+    }
   }
 
   const lines = patchText.split("\n")
@@ -49,7 +64,12 @@ export function PatchEditorModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-[#0b0f19] border border-[#1e293b] rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="patch-editor-title"
+        className="bg-[#0b0f19] border border-[#1e293b] rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#1e293b] bg-[#07090e]">
           <div className="flex items-center gap-3">
@@ -57,18 +77,19 @@ export function PatchEditorModal({
               <Code className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-white flex items-center gap-2">
+              <h2 id="patch-editor-title" className="text-base font-semibold text-white flex items-center gap-2">
                 Interactive Branch Patch Editor
                 <span className="text-xs px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 font-mono border border-blue-500/20">
                   {branchId}
                 </span>
               </h2>
               <p className="text-xs text-gray-400">
-                Directly modify unified diff instructions and test deterministic sandbox resolution.
+                 Edit a candidate diff and verify it against the selected snapshot when Live Sandbox is enabled.
               </p>
             </div>
           </div>
           <button
+            aria-label="Close patch editor"
             onClick={onClose}
             className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-[#1e293b] transition"
           >
@@ -117,7 +138,9 @@ export function PatchEditorModal({
               <Check className="w-4 h-4 text-emerald-400" />
               {simResult}
             </span>
-            <span className="text-[10px] text-gray-400">Verified by Sandbox Engine</span>
+               <span className="text-[10px] text-gray-400">
+                 {onVerifyPatch ? "Verified by Sandbox Engine" : "Draft only — no live snapshot selected"}
+               </span>
           </div>
         )}
 
@@ -139,7 +162,7 @@ export function PatchEditorModal({
               className="flex items-center gap-2 px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition shadow-lg shadow-emerald-900/30 disabled:opacity-50"
             >
               <Play className="w-3.5 h-3.5" />
-              {simulating ? "Verifying in Sandbox..." : "Run in Sandbox"}
+               {simulating ? "Verifying in Sandbox..." : onVerifyPatch ? "Verify in Sandbox" : "Save Draft"}
             </button>
           </div>
         </div>

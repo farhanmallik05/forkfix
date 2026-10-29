@@ -39,15 +39,21 @@ export const TimeTravelModal: React.FC<TimeTravelModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
-      <div className="w-full max-w-lg bg-obsidian-900 border border-obsidian-700 rounded-xl shadow-2xl p-6 text-gray-200 animate-in fade-in zoom-in-95 duration-200">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="time-travel-title"
+        className="w-full max-w-lg bg-obsidian-900 border border-obsidian-700 rounded-xl shadow-2xl p-6 text-gray-200 animate-in fade-in zoom-in-95 duration-200"
+      >
         <div className="flex items-center justify-between pb-3 border-b border-obsidian-700">
           <div className="flex items-center space-x-2">
-            <span className="text-cyber-emerald text-lg">⚡</span>
-            <h3 className="font-semibold text-white text-base">
+            <span className="text-cyber-emerald text-lg" aria-hidden="true">⚡</span>
+            <h3 id="time-travel-title" className="font-semibold text-white text-base">
               Fork Reality from Snapshot
             </h3>
           </div>
           <button
+            aria-label="Close dialog"
             onClick={onClose}
             className="text-gray-400 hover:text-white transition text-sm p-1"
           >

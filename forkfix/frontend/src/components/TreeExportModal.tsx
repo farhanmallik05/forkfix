@@ -64,7 +64,12 @@ export function TreeExportModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-[#0b0f19] border border-[#1e293b] rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tree-export-title"
+        className="bg-[#0b0f19] border border-[#1e293b] rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#1e293b] bg-[#07090e]">
           <div className="flex items-center gap-3">
@@ -72,13 +77,14 @@ export function TreeExportModal({
               <GitFork className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-white">Export Reality Tree Diagram</h2>
+              <h2 id="tree-export-title" className="text-base font-semibold text-white">Export Reality Tree Diagram</h2>
               <p className="text-xs text-gray-400">
                 Generate shareable ASCII and Markdown tree structures for GitHub PR comments and issue tracking.
               </p>
             </div>
           </div>
           <button
+            aria-label="Close export dialog"
             onClick={onClose}
             className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-[#1e293b] transition"
           >

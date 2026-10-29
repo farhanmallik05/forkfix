@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import os
 import time
+from urllib.parse import urlparse
 try:
     from tavily import AsyncTavilyClient
 except ImportError:
@@ -11,10 +12,15 @@ except ImportError:
 
 DEFAULT_EXCLUSIONS = [
     "github.com",
+    "gist.github.com",
+    "raw.githubusercontent.com",
+    "patch-diff.githubusercontent.com",
     "gitlab.com",
     "bitbucket.org",
     "swebench.com",
     "huggingface.co/datasets/princeton-nlp/SWE-bench",
+    "pastebin.com",
+    "paperswithcode.com",
 ]
 
 
@@ -34,6 +40,13 @@ class TavilyService:
         q2 = f"{cleaned_err} documentation official guide".strip()
         q3 = f"python {cleaned_err} fix workaround solution".strip()
         return [q1, q2, q3]
+
+    @staticmethod
+    def _is_allowed_url(url: str, exclusions: list[str]) -> bool:
+        """Apply a second client-side filter; search-provider exclusions are not a proof."""
+        parsed = urlparse(url)
+        normalized = f"{parsed.netloc}{parsed.path}".lower()
+        return not any(exclusion.lower().strip("/") in normalized for exclusion in exclusions)
 
     async def multi_stage_research(
         self,
@@ -71,7 +84,7 @@ class TavilyService:
         for batch in search_batches:
             for r in batch:
                 url = r.get("url", "")
-                if url and url not in seen_urls:
+                if url and url not in seen_urls and self._is_allowed_url(url, exclusions):
                     seen_urls.add(url)
                     deduped_results.append({
                         "title": r.get("title", "Technical Documentation"),

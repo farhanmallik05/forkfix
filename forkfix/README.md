@@ -67,6 +67,14 @@ If you are evaluating this repository without active Token Factory Sandbox beta 
 3. Select any verified SWE-bench benchmark task (e.g., `Django #31422` or `Sympy #18059`).
 4. Watch the verified parallel race, terminal logs, and patch diff with zero latency and 100% reproducibility.
 
+Replay is intentionally labeled as recorded evidence in the dashboard. It is separate from the live path and does not inflate benchmark results.
+
+### Live Mode
+
+Switch to **Live Sandbox**, enter an issue description, choose `mock`, `docker`, or `contree`, and click **Start Live Run**. The dashboard connects to the FastAPI SSE stream and renders checkpoint, branch, escalation, and winner events as they arrive. `mock` is a deterministic orchestration smoke test; it is not a claim of SWE-bench performance.
+
+For a hosted deployment, set `FORKFIX_BACKEND_URL` on the Next.js server to the backend URL, plus `CORS_ORIGINS`, `ADMIN_API_KEY`, and (for GitHub webhooks) `GITHUB_WEBHOOK_SECRET` on the backend.
+
 ---
 
 ## License

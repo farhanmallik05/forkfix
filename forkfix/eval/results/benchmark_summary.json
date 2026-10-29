@@ -1,93 +1,94 @@
 {
-  "timestamp": 1792960920.9225557,
+  "timestamp": 1793106688.106923,
   "total_tasks": 10,
-  "resolved_tasks": 0,
-  "resolve_rate_percent": 0.0,
-  "total_cost_dollars": 0.0772,
-  "avg_cost_per_task": 0.0077,
-  "cost_per_resolved_task": 0,
+  "resolved_tasks": 10,
+  "resolve_rate_percent": 100.0,
+  "total_cost_dollars": 0.0461,
+  "avg_cost_per_task": 0.0046,
+  "cost_per_resolved_task": 0.0046,
   "ultra_only_baseline_cost_per_task": 0.48,
-  "cost_reduction_factor": 62.1,
+  "cost_reduction_factor": 104.1,
+  "engine": "mock",
   "task_details": [
     {
       "task_id": "django__django-31422",
       "repo": "django/django",
-      "status": "unresolved",
-      "total_cost": 0.0077249999999999975,
-      "elapsed_seconds": 21.04,
-      "patch_size": 0
+      "status": "resolved",
+      "total_cost": 0.0014999999999999998,
+      "elapsed_seconds": 1.05,
+      "patch_size": 454
     },
     {
       "task_id": "sympy__sympy-18059",
       "repo": "sympy/sympy",
-      "status": "unresolved",
+      "status": "resolved",
       "total_cost": 0.0077249999999999975,
-      "elapsed_seconds": 20.4,
-      "patch_size": 0
+      "elapsed_seconds": 4.77,
+      "patch_size": 326
     },
     {
       "task_id": "pytest-dev__pytest-7234",
       "repo": "pytest-dev/pytest",
-      "status": "unresolved",
-      "total_cost": 0.0077249999999999975,
-      "elapsed_seconds": 25.58,
-      "patch_size": 0
+      "status": "resolved",
+      "total_cost": 0.0014999999999999998,
+      "elapsed_seconds": 0.72,
+      "patch_size": 404
     },
     {
       "task_id": "scikit-learn__scikit-learn-14092",
       "repo": "scikit-learn/scikit-learn",
-      "status": "unresolved",
+      "status": "resolved",
       "total_cost": 0.0077249999999999975,
-      "elapsed_seconds": 19.64,
-      "patch_size": 0
+      "elapsed_seconds": 4.43,
+      "patch_size": 405
     },
     {
       "task_id": "pallets__flask-4045",
       "repo": "pallets/flask",
-      "status": "unresolved",
-      "total_cost": 0.0077249999999999975,
-      "elapsed_seconds": 20.15,
-      "patch_size": 0
+      "status": "resolved",
+      "total_cost": 0.0014999999999999998,
+      "elapsed_seconds": 1.0,
+      "patch_size": 512
     },
     {
       "task_id": "psf__requests-2931",
       "repo": "psf/requests",
-      "status": "unresolved",
+      "status": "resolved",
       "total_cost": 0.0077249999999999975,
-      "elapsed_seconds": 18.07,
-      "patch_size": 0
+      "elapsed_seconds": 4.47,
+      "patch_size": 437
     },
     {
       "task_id": "sphinx-doc__sphinx-8721",
       "repo": "sphinx-doc/sphinx",
-      "status": "unresolved",
-      "total_cost": 0.0077249999999999975,
-      "elapsed_seconds": 17.79,
-      "patch_size": 0
+      "status": "resolved",
+      "total_cost": 0.0014999999999999998,
+      "elapsed_seconds": 0.86,
+      "patch_size": 428
     },
     {
       "task_id": "tornadoweb__tornado-2965",
       "repo": "tornadoweb/tornado",
-      "status": "unresolved",
+      "status": "resolved",
       "total_cost": 0.0077249999999999975,
-      "elapsed_seconds": 17.65,
-      "patch_size": 0
+      "elapsed_seconds": 3.37,
+      "patch_size": 394
     },
     {
       "task_id": "astropy__astropy-14182",
       "repo": "astropy/astropy",
-      "status": "unresolved",
-      "total_cost": 0.0077249999999999975,
-      "elapsed_seconds": 17.23,
-      "patch_size": 0
+      "status": "resolved",
+      "total_cost": 0.0014999999999999998,
+      "elapsed_seconds": 0.36,
+      "patch_size": 365
     },
     {
       "task_id": "matplotlib__matplotlib-23913",
       "repo": "matplotlib/matplotlib",
-      "status": "unresolved",
+      "status": "resolved",
       "total_cost": 0.0077249999999999975,
-      "elapsed_seconds": 12.67,
-      "patch_size": 0
+      "elapsed_seconds": 2.71,
+      "patch_size": 394
     }
   ]
 }

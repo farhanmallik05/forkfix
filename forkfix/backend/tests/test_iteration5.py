@@ -67,6 +67,27 @@ def test_database_persistence_and_retrieval(tmp_path):
     assert events[0]["event_type"] == "branch_forked"
 
 
+def test_database_reconcile_interrupted_runs(tmp_path):
+    """Test that interrupted runs left in running/started states are safely transitioned."""
+    db_file = tmp_path / "test_reconcile.db"
+    db = Database(db_path=str(db_file))
+
+    db.create_run(run_id="run-interrupted-1", issue_text="Issue 1")
+    db.create_run(run_id="run-interrupted-2", issue_text="Issue 2")
+    db.update_run_status("run-interrupted-2", status="resolved")
+
+    reconciled = db.reconcile_interrupted_runs()
+    assert reconciled == 1
+
+    run1 = db.get_run("run-interrupted-1")
+    assert run1 is not None
+    assert run1["status"] == "interrupted"
+
+    run2 = db.get_run("run-interrupted-2")
+    assert run2 is not None
+    assert run2["status"] == "resolved"
+
+
 def test_ci_and_deployment_files_exist():
     """Verify that CI workflow, Dockerfiles, and compose configurations are present."""
     root = PROJECT_ROOT

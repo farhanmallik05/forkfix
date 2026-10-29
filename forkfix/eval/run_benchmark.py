@@ -45,7 +45,10 @@ async def benchmark_single_task(task: dict[str, str], engine_type: str = "mock")
     start_t = time.time()
     res = await orchestrator.execute_fix(
         base_image_uuid="mock-swe-base",
-        issue_text=task["issue"],
+        # Include repository identity so the deterministic offline engine can
+        # select the matching fixture. Real runs should use the actual issue
+        # text and an external repository checkout.
+        issue_text=f"Repository: {task['repo']}\n\n{task['issue']}",
         emitter=emitter,
     )
     elapsed = time.time() - start_t
@@ -60,18 +63,47 @@ async def benchmark_single_task(task: dict[str, str], engine_type: str = "mock")
     }
 
 
-async def run_benchmark_suite(engine_type: str = "mock"):
-    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    print(f"Starting Forkfix SWE-bench Benchmark ({len(BENCHMARK_TASKS)} tasks)...")
+import argparse
 
-    # Limit concurrency to 5 simultaneous tasks
-    semaphore = asyncio.Semaphore(5)
+async def run_benchmark_suite(
+    engine_type: str = "mock",
+    task_filter: str | None = None,
+    limit: int | None = None,
+    concurrency: int = 5,
+    dry_run: bool = False,
+    output_path: str | None = None,
+):
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+
+    tasks = BENCHMARK_TASKS
+    if task_filter:
+        tasks = [t for t in tasks if task_filter.lower() in t["task_id"].lower() or task_filter.lower() in t["repo"].lower()]
+    if limit and limit > 0:
+        tasks = tasks[:limit]
+
+    print(f"Starting Forkfix SWE-bench Benchmark ({len(tasks)} tasks, engine={engine_type})...")
+
+    if dry_run:
+        results = [
+            {
+                "task_id": t["task_id"],
+                "repo": t["repo"],
+                "status": "dry_run",
+                "total_cost": 0.0,
+                "elapsed_seconds": 0.0,
+                "patch_size": 0,
+            }
+            for t in tasks
+        ]
+        return {"dry_run": True, "total_tasks": len(results), "tasks": results}
+
+    semaphore = asyncio.Semaphore(concurrency)
 
     async def sem_task(t):
         async with semaphore:
             return await benchmark_single_task(t, engine_type=engine_type)
 
-    results = await asyncio.gather(*[sem_task(t) for t in BENCHMARK_TASKS])
+    results = await asyncio.gather(*[sem_task(t) for t in tasks])
 
     resolved_count = sum(1 for r in results if r["status"] == "resolved")
     total_cost = sum(r["total_cost"] for r in results)
@@ -82,22 +114,45 @@ async def run_benchmark_suite(engine_type: str = "mock"):
         "timestamp": time.time(),
         "total_tasks": len(results),
         "resolved_tasks": resolved_count,
-        "resolve_rate_percent": round((resolved_count / len(results)) * 100, 1),
+        "resolve_rate_percent": round((resolved_count / len(results)) * 100, 1) if results else 0.0,
         "total_cost_dollars": round(total_cost, 4),
         "avg_cost_per_task": round(avg_cost, 4),
         "cost_per_resolved_task": round(cost_per_resolved, 4),
         "ultra_only_baseline_cost_per_task": 0.48,
         "cost_reduction_factor": round(0.48 / (avg_cost or 0.01), 1),
+        "engine": engine_type,
         "task_details": results,
     }
 
-    out_file = RESULTS_DIR / "benchmark_summary.json"
+    out_file = Path(output_path) if output_path else (RESULTS_DIR / "benchmark_summary.json")
     with open(out_file, "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
 
-    print(f"Benchmark finished: {resolved_count}/{len(results)} resolved. Summary saved to {out_file}")
+    print(f"Benchmark finished: {resolved_count}/{len(results)} resolved ({summary['resolve_rate_percent']}%). Summary saved to {out_file}")
     return summary
 
 
+def main():
+    parser = argparse.ArgumentParser(description="Forkfix SWE-bench Evaluation Harness")
+    parser.add_argument("--engine", default=os.getenv("SANDBOX_ENGINE", "mock"), help="Sandbox engine: mock, docker, or contree")
+    parser.add_argument("--task", default=None, help="Filter tasks by repo or task ID substring")
+    parser.add_argument("--limit", type=int, default=None, help="Maximum number of tasks to run")
+    parser.add_argument("--concurrency", type=int, default=5, help="Concurrent task execution limit")
+    parser.add_argument("--dry-run", action="store_true", help="Validate test definitions without executing agent branches")
+    parser.add_argument("--output", default=None, help="Custom output JSON path")
+    args = parser.parse_args()
+
+    asyncio.run(
+        run_benchmark_suite(
+            engine_type=args.engine,
+            task_filter=args.task,
+            limit=args.limit,
+            concurrency=args.concurrency,
+            dry_run=args.dry_run,
+            output_path=args.output,
+        )
+    )
+
+
 if __name__ == "__main__":
-    asyncio.run(run_benchmark_suite())
+    main()

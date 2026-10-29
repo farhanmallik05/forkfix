@@ -17,6 +17,7 @@ class Database:
     def _get_connection(self) -> sqlite3.Connection:
         conn = sqlite3.connect(str(self.db_path))
         conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON")
         return conn
 
     def _init_db(self):
@@ -122,6 +123,20 @@ class Database:
         with self._get_connection() as conn:
             conn.execute(query, params)
 
+    def reconcile_interrupted_runs(self) -> int:
+        """Marks any runs that were left in non-terminal states ('running', 'started', 'exploring') as 'interrupted'."""
+        now = time.time()
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                UPDATE runs
+                SET status = 'interrupted', updated_at = ?
+                WHERE status IN ('running', 'started', 'exploring')
+                """,
+                (now,),
+            )
+            return cursor.rowcount
+
     def record_branch(
         self,
         run_id: str,
@@ -211,6 +226,23 @@ class Database:
             # Attach branches
             branch_rows = conn.execute("SELECT * FROM branches WHERE run_id = ?", (run_id,)).fetchall()
             run_data["branches"] = [dict(b) for b in branch_rows]
+
+            step_rows = conn.execute(
+                "SELECT * FROM steps WHERE run_id = ? ORDER BY id ASC", (run_id,)
+            ).fetchall()
+            run_data["steps"] = [dict(s) for s in step_rows]
+
+            event_rows = conn.execute(
+                "SELECT * FROM events WHERE run_id = ? ORDER BY id ASC", (run_id,)
+            ).fetchall()
+            run_data["events"] = []
+            for event in event_rows:
+                item = dict(event)
+                try:
+                    item["payload"] = json.loads(item["payload"])
+                except (TypeError, json.JSONDecodeError):
+                    pass
+                run_data["events"].append(item)
 
             return run_data
 

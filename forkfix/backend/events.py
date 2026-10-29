@@ -89,6 +89,17 @@ class EventEmitter:
     def subscribe(self) -> asyncio.Queue[dict[str, Any]]:
         q: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
         self.queues.append(q)
+        # A browser can connect just after a fast run has emitted its first
+        # events. Replay persisted events into the new queue so SSE consumers
+        # receive a complete audit trail instead of a truncated graph.
+        if self.log_path.exists():
+            try:
+                with self.log_path.open("r", encoding="utf-8") as log:
+                    for line in log:
+                        if line.strip():
+                            q.put_nowait(json.loads(line))
+            except (OSError, json.JSONDecodeError):
+                pass
         return q
 
     def unsubscribe(self, q: asyncio.Queue[dict[str, Any]]):

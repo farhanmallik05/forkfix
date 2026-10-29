@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 import asyncio
+from contextlib import asynccontextmanager
 import json
 import os
 import uuid
@@ -9,38 +10,63 @@ from pathlib import Path
 from typing import Any
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
 from .auth import check_rate_limit, verify_admin_key
 from .database import get_db
 from .events import EventEmitter
 from .nemotron import NemotronClient
-from .orchestrator import ForkfixOrchestrator
+from .orchestrator import CHECK_CMD, REPO_DIR, ForkfixOrchestrator
 from .sandbox import get_sandbox_engine
+from .security import verify_github_signature
 from .tavily_service import TavilyService
+
+# In-memory registry of active run emitters
+active_emitters: dict[str, EventEmitter] = {}
+active_tasks: dict[str, asyncio.Task[Any]] = {}
+FIXTURES_DIR = Path(__file__).resolve().parent.parent / "data" / "fixtures"
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Reconcile any unfinalized runs left from previous server crashes/restarts
+    try:
+        reconciled = get_db().reconcile_interrupted_runs()
+        if reconciled > 0:
+            print(f"[Forkfix Startup] Reconciled {reconciled} interrupted run(s) to safe state.")
+    except Exception as exc:
+        print(f"[Forkfix Startup] Startup run reconciliation warning: {exc}")
+    yield
+    # Shutdown: cancel in-flight tasks cleanly
+    for task in list(active_tasks.values()):
+        if not task.done():
+            task.cancel()
+
 
 app = FastAPI(
     title="Forkfix API",
     version="0.2.0",
     description="Parallel Reality Debugging platform powered by Nebius Token Factory & NVIDIA Nemotron",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=[origin.strip() for origin in os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",") if origin.strip()],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # In-memory registry of active run emitters
 active_emitters: dict[str, EventEmitter] = {}
+active_tasks: dict[str, asyncio.Task[Any]] = {}
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "data" / "fixtures"
 
 
 class RunRequest(BaseModel):
-    issue_text: str
+    issue_text: str = Field(min_length=8, max_length=20_000)
     base_image_uuid: str = "mock-swe-base"
     engine: str | None = None
 
@@ -51,6 +77,41 @@ class ForkRequest(BaseModel):
     issue_text: str
     hint: str
     tier: str = "super"
+    engine: str | None = None
+
+
+class PatchVerifyRequest(BaseModel):
+    snapshot_uuid: str = Field(min_length=1, max_length=500)
+    patch: str = Field(min_length=1, max_length=500_000)
+    engine: str | None = None
+
+
+async def _run_with_failure_capture(
+    run_id: str,
+    orchestrator: ForkfixOrchestrator,
+    base_image_uuid: str,
+    issue_text: str,
+    emitter: EventEmitter,
+) -> None:
+    """Run orchestration without leaving a permanently-running database row."""
+    try:
+        await orchestrator.execute_fix(
+            base_image_uuid=base_image_uuid,
+            issue_text=issue_text,
+            emitter=emitter,
+        )
+    except Exception as exc:
+        # Never expose credentials or a full traceback through the event stream.
+        message = f"Execution failed safely: {type(exc).__name__}: {str(exc)[:500]}"
+        await emitter.emit({
+            "event_type": "unresolved",
+            "run_id": run_id,
+            "total_cost": 0.0,
+            "branches_attempted": 0,
+            "message": message,
+        })
+    finally:
+        active_tasks.pop(run_id, None)
 
 
 @app.get("/api/health")
@@ -79,8 +140,10 @@ async def start_run(req: RunRequest):
     orchestrator = ForkfixOrchestrator(engine=engine, nemotron=nemotron, tavily=tavily)
 
     # Launch execution as an asynchronous background task
-    asyncio.create_task(
-        orchestrator.execute_fix(
+    active_tasks[run_id] = asyncio.create_task(
+        _run_with_failure_capture(
+            run_id=run_id,
+            orchestrator=orchestrator,
             base_image_uuid=req.base_image_uuid,
             issue_text=req.issue_text,
             emitter=emitter,
@@ -133,7 +196,7 @@ async def fork_reality(req: ForkRequest):
         emitter = EventEmitter(run_id=req.run_id)
         active_emitters[req.run_id] = emitter
 
-    engine = get_sandbox_engine()
+    engine = get_sandbox_engine(req.engine)
     nemotron = NemotronClient()
     orchestrator = ForkfixOrchestrator(engine=engine, nemotron=nemotron)
 
@@ -151,6 +214,56 @@ async def fork_reality(req: ForkRequest):
     )
 
     return {"status": "forked", "branch_id": branch_id}
+
+
+@app.post("/api/verify-patch", dependencies=[Depends(check_rate_limit)])
+async def verify_patch(req: PatchVerifyRequest):
+    """Apply a candidate diff in a disposable snapshot and run the oracle."""
+    engine = get_sandbox_engine(req.engine)
+    session = await engine.use(req.snapshot_uuid, strict=True)
+    apply_result = await session.run(
+        shell="git apply --check /tmp/forkfix-candidate.patch && git apply /tmp/forkfix-candidate.patch",
+        cwd=REPO_DIR,
+        files={"/tmp/forkfix-candidate.patch": req.patch.encode("utf-8")},
+        disposable=False,
+        timeout=120,
+    )
+    if apply_result.exit_code != 0:
+        return {
+            "verified": False,
+            "stage": "patch_apply",
+            "exit_code": apply_result.exit_code,
+            "output": (apply_result.stdout + apply_result.stderr)[-4000:],
+        }
+
+    verification_session = await engine.use(apply_result.uuid or session.uuid, strict=True)
+    check = await verification_session.run(
+        shell=CHECK_CMD,
+        cwd=REPO_DIR,
+        disposable=True,
+        timeout=180,
+    )
+    output = (check.stdout + check.stderr)[-4000:]
+    return {
+        "verified": check.exit_code == 0,
+        "stage": "oracle",
+        "exit_code": check.exit_code,
+        "output": output,
+        "snapshot_uuid": apply_result.uuid or session.uuid,
+    }
+
+
+@app.get("/api/benchmark")
+async def get_benchmark_results():
+    """Returns the latest SWE-bench evaluation run summary."""
+    summary_file = Path(__file__).resolve().parent.parent / "eval" / "results" / "benchmark_summary.json"
+    if summary_file.exists():
+        try:
+            with open(summary_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {"total_tasks": 0, "resolved_tasks": 0, "resolve_rate_percent": 0.0, "task_details": []}
 
 
 @app.get("/api/runs")
@@ -230,8 +343,22 @@ async def get_fixture(fixture_name: str):
 
 
 @app.post("/api/webhook/github")
-async def github_webhook(payload: dict[str, Any]):
+async def github_webhook(request: Request):
     """Receives GitHub issue webhooks and dispatches parallel reality resolution."""
+    raw_payload = await request.body()
+    webhook_secret = os.getenv("GITHUB_WEBHOOK_SECRET", "")
+    if not verify_github_signature(
+        raw_payload,
+        request.headers.get("x-hub-signature-256"),
+        webhook_secret,
+    ):
+        raise HTTPException(status_code=401, detail="Invalid GitHub webhook signature")
+
+    try:
+        payload: dict[str, Any] = json.loads(raw_payload or b"{}")
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload") from exc
+
     action = payload.get("action", "")
     issue = payload.get("issue", {})
     repo = payload.get("repository", {})
@@ -251,6 +378,22 @@ async def github_webhook(payload: dict[str, Any]):
     run_id = f"gh-{issue_number}-{uuid.uuid4().hex[:6]}"
     db = get_db()
     db.create_run(run_id=run_id, issue_text=issue_text, base_image_uuid="mock-swe-base")
+    emitter = EventEmitter(run_id=run_id)
+    active_emitters[run_id] = emitter
+    orchestrator = ForkfixOrchestrator(
+        engine=get_sandbox_engine(),
+        nemotron=NemotronClient(),
+        tavily=TavilyService(),
+    )
+    active_tasks[run_id] = asyncio.create_task(
+        _run_with_failure_capture(
+            run_id=run_id,
+            orchestrator=orchestrator,
+            base_image_uuid="mock-swe-base",
+            issue_text=issue_text,
+            emitter=emitter,
+        )
+    )
 
     return {
         "status": "queued",

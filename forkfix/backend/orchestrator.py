@@ -35,6 +35,8 @@ SYSTEM_PROMPT = (
 )
 
 
+from dataclasses import dataclass
+
 def clip(text: str, max_chars: int = 5000) -> str:
     if len(text) <= max_chars:
         return text
@@ -42,16 +44,63 @@ def clip(text: str, max_chars: int = 5000) -> str:
     return text[:half] + "\n\n[...output clipped...]\n\n" + text[-half:]
 
 
+@dataclass
+class RunResult:
+    status: str
+    winner: dict[str, Any] | None
+    winning_patch: str
+    total_cost: float
+    elapsed_seconds: float
+    branches_attempted: int
+
+
 class ForkfixOrchestrator:
     def __init__(
         self,
-        engine: SandboxEngine,
+        engine: SandboxEngine | str | None = None,
         nemotron: NemotronClient | None = None,
         tavily: TavilyService | None = None,
+        engine_type: str | None = None,
     ):
+        from .sandbox import get_sandbox_engine
+        if engine is None and engine_type is not None:
+            engine = get_sandbox_engine(engine_type)
+        elif isinstance(engine, str):
+            engine = get_sandbox_engine(engine)
+        elif engine is None:
+            engine = get_sandbox_engine("mock")
         self.engine = engine
         self.nemotron = nemotron or NemotronClient()
         self.tavily = tavily or TavilyService()
+
+    async def run_task(
+        self,
+        issue_text: str,
+        test_command: str = "pytest -q",
+        base_image_uuid: str = "mock-swe-base",
+        emitter: EventEmitter | None = None,
+        max_branches: int = 4,
+    ) -> RunResult:
+        """Convenience execution interface matching GitHub Action and CLI runner."""
+        if emitter is None:
+            import uuid
+            run_id = f"task-{uuid.uuid4().hex[:8]}"
+            emitter = EventEmitter(run_id=run_id)
+        res = await self.execute_fix(
+            base_image_uuid=base_image_uuid,
+            issue_text=issue_text,
+            emitter=emitter,
+            fast_branch_count=max_branches,
+        )
+        winner = res.get("winner") or {}
+        return RunResult(
+            status=res.get("status", "unresolved"),
+            winner=winner,
+            winning_patch=winner.get("patch", ""),
+            total_cost=float(res.get("cost", 0.0)),
+            elapsed_seconds=float(res.get("elapsed", 0.0)),
+            branches_attempted=max_branches,
+        )
 
     async def prepare_checkpoint_c1(
         self,
@@ -122,6 +171,8 @@ class ForkfixOrchestrator:
         )
 
         session = await self.engine.use(start_uuid, strict=True)
+        if hasattr(session, "set_context"):
+            session.set_context(branch_id=branch_id, issue_text=issue_text, tier=tier)
         current_uuid = start_uuid
         spent = 0.0
         trace: list[dict[str, Any]] = []
@@ -153,6 +204,8 @@ class ForkfixOrchestrator:
             if step_res.uuid:
                 current_uuid = step_res.uuid
                 session = await self.engine.use(current_uuid, strict=True)
+                if hasattr(session, "set_context"):
+                    session.set_context(branch_id=branch_id, issue_text=issue_text, tier=tier)
 
             obs = clip((step_res.stdout or "") + (step_res.stderr or ""))
             trace_entry = {
@@ -214,31 +267,41 @@ class ForkfixOrchestrator:
         prefix: str = "b",
         hint: str = "",
     ) -> list[dict[str, Any]]:
-        """Spawns N concurrent branches from start_uuid."""
-        tasks = [
-            self.run_branch(
-                branch_id=f"{prefix}{idx+1}",
-                start_uuid=start_uuid,
-                issue_text=issue_text,
-                emitter=emitter,
-                tier=tier,
-                hint=hint,
+        """Spawns N concurrent branches from start_uuid with diversified hypothesis strategies."""
+        from .prompt_engine import PromptEngine
+        hypotheses = PromptEngine.build_4way_hypothesis_prompts(issue_text=issue_text)
+
+        tasks = []
+        for idx in range(branch_count):
+            hypo_strategy = hypotheses[idx % len(hypotheses)]["strategy"]
+            branch_hint = f"{hint}\nHypothesis Mandate: {hypo_strategy}" if hint else f"Hypothesis Mandate: {hypo_strategy}"
+            tasks.append(
+                self.run_branch(
+                    branch_id=f"{prefix}{idx+1}",
+                    start_uuid=start_uuid,
+                    issue_text=issue_text,
+                    emitter=emitter,
+                    tier=tier,
+                    hint=branch_hint,
+                )
             )
-            for idx in range(branch_count)
-        ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         return [r for r in results if isinstance(r, dict)]
 
     async def evaluate_winner(self, runs: list[dict[str, Any]]) -> dict[str, Any] | None:
-        """Verifies each branch against the repro test. Returns highest-quality passing diff."""
+        """Verifies each branch against the repro test twice to filter out flakiness. Returns highest-quality passing diff."""
         from .patch_scorer import PatchScorer
 
         async def verify_run(run: dict[str, Any]) -> bool:
             if not run.get("patch", "").strip():
                 return False
             check_session = await self.engine.use(run["image_uuid"], strict=True)
-            res = await check_session.run(shell=CHECK_CMD, cwd=REPO_DIR, disposable=True, timeout=180)
-            return res.exit_code == 0
+            res1 = await check_session.run(shell=CHECK_CMD, cwd=REPO_DIR, disposable=True, timeout=180)
+            if res1.exit_code != 0:
+                return False
+            # Dual-pass verification: run a second time to ensure patch is deterministic and not flaky
+            res2 = await check_session.run(shell=CHECK_CMD, cwd=REPO_DIR, disposable=True, timeout=60)
+            return res2.exit_code == 0
 
         verifications = await asyncio.gather(*[verify_run(r) for r in runs])
         passing_runs = [r for r, is_ok in zip(runs, verifications) if is_ok]
@@ -259,6 +322,8 @@ class ForkfixOrchestrator:
         base_image_uuid: str,
         issue_text: str,
         emitter: EventEmitter,
+        fast_branch_count: int = 4,
+        super_branch_count: int = 3,
     ) -> dict[str, Any]:
         """Main end-to-end Forkfix workflow."""
         start_time = time.time()
@@ -268,7 +333,7 @@ class ForkfixOrchestrator:
         fast_runs = await self.race_parallel_branches(
             start_uuid=c1_uuid,
             issue_text=issue_text,
-            branch_count=4,
+            branch_count=max(1, min(fast_branch_count, 8)),
             emitter=emitter,
             tier="fast",
             prefix="fast-b",
@@ -319,11 +384,11 @@ class ForkfixOrchestrator:
             )
         )
 
-        # Stage 3: 3x Super Targeted Remediation Branches (Nemotron-3-Super)
+        # Stage 3: targeted Super remediation branches
         super_runs = await self.race_parallel_branches(
             start_uuid=c1_uuid,
             issue_text=issue_text,
-            branch_count=3,
+            branch_count=max(1, min(super_branch_count, 8)),
             emitter=emitter,
             tier="super",
             prefix="super-b",

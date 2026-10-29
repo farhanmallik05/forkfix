@@ -34,19 +34,25 @@ export const BranchComparator: React.FC<BranchComparatorProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-6">
-      <div className="w-full max-w-6xl h-[88vh] bg-obsidian-900 border border-obsidian-700 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="comparator-title"
+        className="w-full max-w-6xl h-[88vh] bg-obsidian-900 border border-obsidian-700 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-obsidian-700 bg-obsidian-850">
           <div className="flex items-center space-x-3">
-            <span className="text-cyber-cyan text-xl">⚖️</span>
+            <span className="text-cyber-cyan text-xl" aria-hidden="true">⚖️</span>
             <div>
-              <h3 className="font-bold text-white text-base">Parallel Reality Comparator</h3>
+              <h3 id="comparator-title" className="font-bold text-white text-base">Parallel Reality Comparator</h3>
               <p className="text-xs text-gray-400">
                 Compare execution commands, test logs, and patches between two concurrent branches
               </p>
             </div>
           </div>
           <button
+            aria-label="Close branch comparator"
             onClick={onClose}
             className="text-gray-400 hover:text-white transition p-1 text-sm"
           >

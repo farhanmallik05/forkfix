@@ -22,6 +22,13 @@ interface FixtureEvent {
 export default function ForkfixDashboard() {
   const [mode, setMode] = useState<"replay" | "live">("replay")
   const [selectedFixture, setSelectedFixture] = useState<string>("events_django_31422")
+  const [liveIssue, setLiveIssue] = useState<string>(
+    "Django currency formatting fails when sanitize_separators receives a currency symbol. Find the minimal safe fix and verify it with a failing reproduction."
+  )
+  const [liveEngine, setLiveEngine] = useState<"mock" | "docker" | "contree">("mock")
+  const [liveRunId, setLiveRunId] = useState<string>("")
+  const [isLiveRunning, setIsLiveRunning] = useState<boolean>(false)
+  const [liveError, setLiveError] = useState<string>("")
   const [allEvents, setAllEvents] = useState<FixtureEvent[]>([])
   const [currentEventIdx, setCurrentEventIdx] = useState<number>(0)
   const [isPlaying, setIsPlaying] = useState<boolean>(false)
@@ -51,6 +58,7 @@ export default function ForkfixDashboard() {
   const [isTreeExportOpen, setIsTreeExportOpen] = useState<boolean>(false)
   const [editingBranchId, setEditingBranchId] = useState<string>("fast-b4")
   const [editingPatch, setEditingPatch] = useState<string>("")
+  const eventSourceRef = useRef<EventSource | null>(null)
 
   // Global Keyboard Shortcuts (Space: pause/play, Esc: close modals, t: tree, e: PR)
   useEffect(() => {
@@ -75,8 +83,10 @@ export default function ForkfixDashboard() {
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [winningPatch])
 
-  // Load Fixture Data
+  // Replay mode is fixture-backed by design: it is deterministic evidence,
+  // not a claim that a new benchmark run just happened.
   useEffect(() => {
+    if (mode !== "replay") return
     async function loadFixture() {
       try {
         const res = await fetch(`/api/fixtures/${selectedFixture}`)
@@ -90,7 +100,11 @@ export default function ForkfixDashboard() {
       }
     }
     loadFixture()
-  }, [selectedFixture])
+  }, [selectedFixture, mode])
+
+  useEffect(() => {
+    return () => eventSourceRef.current?.close()
+  }, [])
 
   const resetState = () => {
     setCurrentEventIdx(0)
@@ -156,6 +170,7 @@ export default function ForkfixDashboard() {
           stepCount: 0,
           cost: 0,
           isEscalation: isEscalated,
+          imageUuid: ev.parent_checkpoint,
         },
       }
 
@@ -164,7 +179,7 @@ export default function ForkfixDashboard() {
         ...prev,
         {
           id: `e-${ev.parent_checkpoint || "C1"}-${ev.branch_id}`,
-          source: ev.parent_checkpoint === "img-sympy-base-c1" && isEscalated ? "escalation-node" : "C1",
+          source: isEscalated ? "escalation-node" : "C1",
           target: ev.branch_id,
           className: isEscalated ? "escalation-edge" : undefined,
         },
@@ -185,6 +200,8 @@ export default function ForkfixDashboard() {
                 ...n.data,
                 stepCount: ev.step_idx + 1,
                 cost: (n.data.cost || 0) + (ev.cost || 0),
+                command: ev.command,
+                imageUuid: ev.snapshot_uuid,
                 status: ev.output.includes("[exit=0]") && !ev.output.includes("AssertionError") ? "pass" : "fail",
               },
             }
@@ -243,6 +260,25 @@ export default function ForkfixDashboard() {
 
   const handleTimeTravelFork = async (hint: string, tier: string) => {
     if (!selectedNode) return
+    if (mode === "live" && liveRunId) {
+      const response = await fetch("/api/fork", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          run_id: liveRunId,
+          snapshot_uuid: selectedNode.data?.imageUuid || selectedNode.id,
+          issue_text: liveIssue,
+          hint,
+          tier,
+          engine: liveEngine,
+        }),
+      })
+      if (!response.ok) {
+        throw new Error("Fork request was rejected by the backend")
+      }
+      setTerminalLogs((prev) => [...prev, `[Time Travel] Live branch requested from ${selectedNode.id}: ${hint}`])
+      return
+    }
     const newBranchId = `custom-b-${Date.now().toString().slice(-3)}`
     const bNode: Node = {
       id: newBranchId,
@@ -275,6 +311,61 @@ export default function ForkfixDashboard() {
     ])
   }
 
+  const startLiveRun = async () => {
+    if (liveIssue.trim().length < 8 || isLiveRunning) return
+    eventSourceRef.current?.close()
+    resetState()
+    setLiveError("")
+    setIsLiveRunning(true)
+
+    try {
+      const response = await fetch("/api/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ issue_text: liveIssue.trim(), engine: liveEngine }),
+      })
+      const payload = await response.json()
+      if (!response.ok) throw new Error(payload.detail || "Unable to start run")
+
+      const runId = payload.run_id as string
+      setLiveRunId(runId)
+      const source = new EventSource(`/api/stream/${runId}`)
+      eventSourceRef.current = source
+      const terminalEvents = new Set(["winner_selected", "unresolved"])
+      const eventTypes = [
+        "checkpoint_created",
+        "branch_spawned",
+        "step_executed",
+        "escalation_triggered",
+        "winner_selected",
+        "unresolved",
+      ]
+      const onEvent = (event: Event) => {
+        try {
+          const data = JSON.parse((event as MessageEvent<string>).data) as FixtureEvent
+          processEvent(data)
+          setCurrentEventIdx((previous) => previous + 1)
+          if (terminalEvents.has(data.event_type)) {
+            setIsLiveRunning(false)
+            source.close()
+          }
+        } catch {
+          setLiveError("Received an invalid event from the live run")
+        }
+      }
+      eventTypes.forEach((type) => source.addEventListener(type, onEvent))
+      source.onerror = () => {
+        if (source.readyState === EventSource.CLOSED) return
+        setIsLiveRunning(false)
+        setLiveError("Live stream disconnected. The run remains available in Run History.")
+        source.close()
+      }
+    } catch (error) {
+      setIsLiveRunning(false)
+      setLiveError(error instanceof Error ? error.message : "Unable to start live run")
+    }
+  }
+
   return (
     <div className="flex flex-col h-screen bg-obsidian-950 font-sans">
       {/* Top Header */}
@@ -298,31 +389,40 @@ export default function ForkfixDashboard() {
 
         {/* Center Task / Fixture Selector */}
         <div className="flex items-center space-x-2 bg-obsidian-850 px-3 py-1.5 rounded-lg border border-obsidian-700">
-          <span className="text-xs text-gray-400">SWE-bench Task:</span>
-          <select
-            value={selectedFixture}
-            onChange={(e) => setSelectedFixture(e.target.value)}
-            className="bg-transparent text-xs text-cyber-cyan font-mono focus:outline-none cursor-pointer"
-          >
-            <option value="events_django_31422" className="bg-obsidian-900 text-white">
-              django/django #31422 (Resolved on Branch 4 - $0.04)
-            </option>
-            <option value="events_sympy_18059" className="bg-obsidian-900 text-white">
-              sympy/sympy #18059 (Escalated via Tavily + Ultra - $0.08)
-            </option>
-          </select>
+          {mode === "replay" ? (
+            <>
+              <span className="text-xs text-gray-400">Evidence Replay:</span>
+              <select
+                value={selectedFixture}
+                onChange={(e) => setSelectedFixture(e.target.value)}
+                className="bg-transparent text-xs text-cyber-cyan font-mono focus:outline-none cursor-pointer"
+                aria-label="Select evidence replay"
+              >
+                <option value="events_django_31422" className="bg-obsidian-900 text-white">
+                  Django #31422 · recorded verified run
+                </option>
+                <option value="events_sympy_18059" className="bg-obsidian-900 text-white">
+                  SymPy #18059 · recorded escalation run
+                </option>
+              </select>
+            </>
+          ) : (
+            <span className="text-xs text-cyber-cyan font-mono">LIVE · {liveRunId || "READY"}</span>
+          )}
         </div>
 
         {/* Action Controls & Telemetry */}
         <div className="flex items-center space-x-3">
           <Link
             href="/benchmark"
+            aria-label="View SWE-bench benchmark leaderboard"
             className="px-2.5 py-1.5 rounded-lg bg-obsidian-850 hover:bg-obsidian-800 text-gray-300 hover:text-cyber-cyan border border-obsidian-700 text-xs transition flex items-center space-x-1.5"
           >
             <span>📊 SWE-bench Leaderboard</span>
           </Link>
 
           <button
+            aria-label="Export reality tree diagram (t)"
             onClick={() => setIsTreeExportOpen(true)}
             className="px-2.5 py-1.5 rounded-lg bg-obsidian-850 hover:bg-obsidian-800 text-gray-300 hover:text-white border border-obsidian-700 text-xs transition flex items-center space-x-1.5"
             title="Press 't' to open"
@@ -331,6 +431,7 @@ export default function ForkfixDashboard() {
           </button>
 
           <button
+            aria-label="Compare reality branches"
             onClick={() => setIsComparatorOpen(true)}
             disabled={nodes.filter((n) => n.type === "branchNode").length < 2}
             className="px-2.5 py-1.5 rounded-lg bg-obsidian-850 hover:bg-obsidian-800 text-gray-300 hover:text-white border border-obsidian-700 text-xs transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center space-x-1.5"
@@ -341,6 +442,7 @@ export default function ForkfixDashboard() {
           {winningPatch && (
             <>
               <button
+                aria-label="Edit and verify patch in sandbox"
                 onClick={() => {
                   setEditingBranchId(winningBranchId || "winning-branch")
                   setEditingPatch(winningPatch)
@@ -352,6 +454,7 @@ export default function ForkfixDashboard() {
               </button>
 
               <button
+                aria-label="Export GitHub pull request (e)"
                 onClick={() => setIsPRExportOpen(true)}
                 className="px-3 py-1.5 rounded-lg bg-cyber-emerald/15 hover:bg-cyber-emerald/25 text-cyber-emerald font-semibold border border-cyber-emerald/40 text-xs transition flex items-center space-x-1.5 shadow-lg shadow-cyber-emerald/10"
                 title="Press 'e' to open"
@@ -366,9 +469,20 @@ export default function ForkfixDashboard() {
             <span className="text-cyber-emerald font-bold">${totalCost.toFixed(4)}</span>
           </div>
 
-          <div className="flex items-center space-x-1 bg-obsidian-850 p-1 rounded-lg border border-obsidian-700 text-xs">
+          <div
+            role="radiogroup"
+            aria-label="Execution mode selection"
+            className="flex items-center space-x-1 bg-obsidian-850 p-1 rounded-lg border border-obsidian-700 text-xs"
+          >
             <button
-              onClick={() => setMode("replay")}
+              aria-label="Select verified replay mode"
+              role="radio"
+              aria-checked={mode === "replay"}
+              onClick={() => {
+                eventSourceRef.current?.close()
+                setIsLiveRunning(false)
+                setMode("replay")
+              }}
               className={`px-2.5 py-1 rounded text-xs font-medium transition ${
                 mode === "replay"
                   ? "bg-cyber-emerald text-obsidian-950 font-bold"
@@ -378,7 +492,13 @@ export default function ForkfixDashboard() {
               Verified Replay
             </button>
             <button
-              onClick={() => setMode("live")}
+              aria-label="Select live sandbox mode"
+              role="radio"
+              aria-checked={mode === "live"}
+              onClick={() => {
+                resetState()
+                setMode("live")
+              }}
               className={`px-2.5 py-1 rounded text-xs font-medium transition ${
                 mode === "live"
                   ? "bg-cyber-cyan text-obsidian-950 font-bold"
@@ -389,7 +509,39 @@ export default function ForkfixDashboard() {
             </button>
           </div>
         </div>
-      </header>
+        </header>
+
+      {mode === "live" && (
+        <section className="px-6 py-3 bg-obsidian-900 border-b border-obsidian-700 flex items-center gap-3">
+          <label htmlFor="live-issue" className="sr-only">Issue description</label>
+          <textarea
+            id="live-issue"
+            value={liveIssue}
+            onChange={(event) => setLiveIssue(event.target.value)}
+            rows={2}
+            className="flex-1 bg-obsidian-950 border border-obsidian-700 rounded-lg px-3 py-2 text-xs text-gray-200 font-mono resize-none focus:outline-none focus:border-cyber-cyan"
+            placeholder="Describe the bug Forkfix should investigate..."
+          />
+          <select
+            value={liveEngine}
+            onChange={(event) => setLiveEngine(event.target.value as "mock" | "docker" | "contree")}
+            className="bg-obsidian-950 border border-obsidian-700 rounded-lg px-2 py-2 text-xs text-cyber-cyan"
+            aria-label="Sandbox engine"
+          >
+            <option value="mock">Mock · deterministic demo</option>
+            <option value="docker">Docker · local sandbox</option>
+            <option value="contree">Contree · Nebius sandbox</option>
+          </select>
+          <button
+            onClick={startLiveRun}
+            disabled={isLiveRunning || liveIssue.trim().length < 8}
+            className="px-4 py-2 rounded-lg bg-cyber-cyan text-obsidian-950 font-bold text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {isLiveRunning ? "Running branches…" : "Start Live Run"}
+          </button>
+          {liveError && <span className="max-w-xs text-[11px] text-cyber-crimson">{liveError}</span>}
+        </section>
+      )}
 
       {/* Main Split Body */}
       <div className="flex-1 flex overflow-hidden">
@@ -407,25 +559,33 @@ export default function ForkfixDashboard() {
           </div>
 
           {/* Bottom Replay Scrubber Controls */}
-          <div className="mt-2 px-4 py-2 bg-obsidian-900 border border-obsidian-700 rounded-lg flex items-center justify-between text-xs font-mono">
+          <div
+            role="toolbar"
+            aria-label="Replay playback and scrubber controls"
+            className="mt-2 px-4 py-2 bg-obsidian-900 border border-obsidian-700 rounded-lg flex items-center justify-between text-xs font-mono"
+          >
             <div className="flex items-center space-x-3">
               <button
+                aria-label={mode === "live" ? (isLiveRunning ? "Streaming live events" : "Live sandbox ready") : (isPlaying ? "Pause replay" : "Start replay playback")}
                 onClick={() => setIsPlaying(!isPlaying)}
-                className="px-3 py-1 bg-cyber-emerald text-obsidian-950 font-bold rounded hover:bg-emerald-400 transition"
+                disabled={mode === "live"}
+                className="px-3 py-1 bg-cyber-emerald text-obsidian-950 font-bold rounded hover:bg-emerald-400 transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {isPlaying ? "⏸ Pause" : "▶ Play Replay"}
+                {mode === "live" ? (isLiveRunning ? "● Streaming" : "Live Run") : (isPlaying ? "⏸ Pause" : "▶ Play Replay")}
               </button>
               <button
+                aria-label="Reset run playback"
                 onClick={resetState}
                 className="px-2 py-1 bg-obsidian-800 text-gray-300 rounded hover:bg-obsidian-700 transition"
               >
                 Reset
               </button>
-              <div className="flex items-center space-x-1 text-gray-400">
+              <div className="flex items-center space-x-1 text-gray-400" role="group" aria-label="Playback speed">
                 <span>Speed:</span>
                 {[1, 2, 4].map((s) => (
                   <button
                     key={s}
+                    aria-label={`Set speed to ${s}x`}
                     onClick={() => setPlaybackSpeed(s)}
                     className={`px-1.5 py-0.5 rounded text-[10px] ${
                       playbackSpeed === s ? "bg-obsidian-700 text-cyber-cyan font-bold" : "text-gray-500"
@@ -438,11 +598,12 @@ export default function ForkfixDashboard() {
             </div>
 
             <div className="text-gray-400">
-              Step {currentEventIdx} of {allEvents.length}
+              {mode === "live" ? `Events received: ${currentEventIdx}` : `Step ${currentEventIdx} of ${allEvents.length}`}
             </div>
 
             {selectedNode && (
               <button
+                aria-label={`Time travel fork reality from node ${selectedNode.id}`}
                 onClick={() => setIsTimeTravelOpen(true)}
                 className="px-3 py-1 bg-cyber-violet/20 border border-cyber-violet/40 text-cyber-violet font-semibold rounded hover:bg-cyber-violet/30 transition flex items-center space-x-1"
               >
@@ -527,6 +688,17 @@ export default function ForkfixDashboard() {
         onClose={() => setIsPatchEditorOpen(false)}
         branchId={editingBranchId}
         initialPatch={editingPatch}
+        snapshotUuid={nodes.find((node) => node.id === winningBranchId)?.data?.imageUuid as string | undefined}
+        onVerifyPatch={liveRunId ? async (patch, snapshotUuid) => {
+          const response = await fetch("/api/verify-patch", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ patch, snapshot_uuid: snapshotUuid, engine: liveEngine }),
+          })
+          const result = await response.json()
+          if (!response.ok) throw new Error(result.detail || "Patch verification request failed")
+          return result
+        } : undefined}
         onApplyCustomPatch={(branchId, customPatch) => {
           setWinningPatch(customPatch)
           setTerminalLogs((prev) => [...prev, `[Patch Editor] Applied custom patch to ${branchId}:\n${customPatch.slice(0, 100)}...`])

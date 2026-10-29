@@ -36,8 +36,12 @@ export const TelemetryDrawer: React.FC<TelemetryDrawerProps> = ({
     <div className="flex flex-col h-full bg-obsidian-900 border border-obsidian-700 rounded-lg overflow-hidden shadow-2xl relative">
       {/* Navigation tabs */}
       <div className="flex items-center justify-between border-b border-obsidian-700 bg-obsidian-850 px-2 text-xs">
-        <div className="flex items-center">
+        <div className="flex items-center" role="tablist" aria-label="Telemetry panels">
           <button
+            role="tab"
+            id="tab-terminal"
+            aria-selected={activeTab === "terminal"}
+            aria-controls="panel-terminal"
             onClick={() => onTabChange("terminal")}
             className={`px-3 py-2.5 font-medium border-b-2 transition ${
               activeTab === "terminal"
@@ -48,6 +52,10 @@ export const TelemetryDrawer: React.FC<TelemetryDrawerProps> = ({
             Terminal Shell
           </button>
           <button
+            role="tab"
+            id="tab-tavily"
+            aria-selected={activeTab === "tavily"}
+            aria-controls="panel-tavily"
             onClick={() => onTabChange("tavily")}
             className={`px-3 py-2.5 font-medium border-b-2 transition flex items-center space-x-1.5 ${
               activeTab === "tavily"
@@ -63,6 +71,10 @@ export const TelemetryDrawer: React.FC<TelemetryDrawerProps> = ({
             )}
           </button>
           <button
+            role="tab"
+            id="tab-cost"
+            aria-selected={activeTab === "cost"}
+            aria-controls="panel-cost"
             onClick={() => onTabChange("cost")}
             className={`px-3 py-2.5 font-medium border-b-2 transition ${
               activeTab === "cost"
@@ -78,6 +90,7 @@ export const TelemetryDrawer: React.FC<TelemetryDrawerProps> = ({
           <div className="flex items-center pr-2">
             <input
               type="text"
+              aria-label="Filter terminal logs"
               placeholder="Filter logs..."
               value={filterQuery}
               onChange={(e) => setFilterQuery(e.target.value)}
@@ -90,7 +103,7 @@ export const TelemetryDrawer: React.FC<TelemetryDrawerProps> = ({
       {/* Tab Contents */}
       <div className="flex-1 overflow-auto p-4 text-xs font-mono">
         {activeTab === "terminal" && (
-          <div className="space-y-3">
+          <div role="tabpanel" id="panel-terminal" aria-labelledby="tab-terminal" className="space-y-3">
             {activeStepCommand && (
               <div className="p-2.5 bg-obsidian-950 rounded border border-obsidian-700">
                 <span className="text-cyber-emerald font-bold">$ </span>
@@ -125,7 +138,7 @@ export const TelemetryDrawer: React.FC<TelemetryDrawerProps> = ({
         )}
 
         {activeTab === "tavily" && (
-          <div className="space-y-4">
+          <div role="tabpanel" id="panel-tavily" aria-labelledby="tab-tavily" className="space-y-4">
             {ultraDiagnosis && (
               <div className="p-3 bg-cyber-violet/10 border border-cyber-violet/30 rounded-lg">
                 <div className="text-cyber-violet font-semibold text-xs mb-1 flex items-center space-x-1">
@@ -184,7 +197,7 @@ export const TelemetryDrawer: React.FC<TelemetryDrawerProps> = ({
         )}
 
         {activeTab === "cost" && (
-          <div className="space-y-4 font-sans">
+          <div role="tabpanel" id="panel-cost" aria-labelledby="tab-cost" className="space-y-4 font-sans">
             <div className="grid grid-cols-2 gap-3">
               <div className="p-3 bg-obsidian-850 rounded-lg border border-obsidian-700">
                 <div className="text-gray-500 text-[11px]">Total Cost This Run</div>

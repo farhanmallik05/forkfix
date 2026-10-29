@@ -35,7 +35,11 @@ rate_limiter = RateLimiter()
 
 
 def check_rate_limit(request: Request):
-    client_ip = request.client.host if request.client else "127.0.0.1"
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        client_ip = forwarded.split(",")[0].strip()
+    else:
+        client_ip = request.client.host if request.client else "127.0.0.1"
     if not rate_limiter.is_allowed(client_ip):
         raise HTTPException(
             status_code=429,
@@ -46,7 +50,13 @@ def check_rate_limit(request: Request):
 def verify_admin_key(credentials: HTTPAuthorizationCredentials | None = Security(security)):
     required_key = os.getenv("ADMIN_API_KEY", "")
     if not required_key:
-        return True  # Open if no admin key configured
+        env = os.getenv("ENVIRONMENT", "development").lower()
+        if env == "production":
+            raise HTTPException(
+                status_code=403,
+                detail="Admin key must be configured via ADMIN_API_KEY environment variable in production.",
+            )
+        return True
     if not credentials or credentials.credentials != required_key:
         raise HTTPException(status_code=401, detail="Invalid or missing admin authorization token")
     return True
