@@ -1,5 +1,5 @@
 name: "Forkfix Parallel Reality Debugger"
-description: "Resolves open-source repository bugs with verified test proofs and sub-dime execution costs using Nebius Token Factory and NVIDIA Nemotron."
+description: "Resolves bugs with verified test proofs and sub-dime costs using Nebius Token Factory & NVIDIA Nemotron."
 author: "Farhan"
 branding:
   icon: "git-pull-request"
