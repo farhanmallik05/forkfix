@@ -58,7 +58,34 @@ export default function ForkfixDashboard() {
   const [isTreeExportOpen, setIsTreeExportOpen] = useState<boolean>(false)
   const [editingBranchId, setEditingBranchId] = useState<string>("fast-b4")
   const [editingPatch, setEditingPatch] = useState<string>("")
+  const [theme, setTheme] = useState<"light" | "dark">("light")
   const eventSourceRef = useRef<EventSource | null>(null)
+
+  // Initialize and synchronize Light/Dark theme preference
+  useEffect(() => {
+    const saved = (localStorage.getItem("forkfix-theme") as "light" | "dark") || "light"
+    setTheme(saved)
+    if (saved === "dark") {
+      document.documentElement.classList.add("dark")
+      document.documentElement.classList.remove("light")
+    } else {
+      document.documentElement.classList.add("light")
+      document.documentElement.classList.remove("dark")
+    }
+  }, [])
+
+  const toggleTheme = () => {
+    const next = theme === "light" ? "dark" : "light"
+    setTheme(next)
+    localStorage.setItem("forkfix-theme", next)
+    if (next === "dark") {
+      document.documentElement.classList.add("dark")
+      document.documentElement.classList.remove("light")
+    } else {
+      document.documentElement.classList.add("light")
+      document.documentElement.classList.remove("dark")
+    }
+  }
 
   // Global Keyboard Shortcuts (Space: pause/play, Esc: close modals, t: tree, e: PR)
   useEffect(() => {
@@ -508,6 +535,26 @@ export default function ForkfixDashboard() {
               Live Sandbox
             </button>
           </div>
+
+          {/* Theme Switcher */}
+          <button
+            aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
+            onClick={toggleTheme}
+            className="px-2.5 py-1.5 rounded-lg bg-obsidian-850 hover:bg-obsidian-800 text-xs font-semibold border border-obsidian-700 transition flex items-center space-x-1.5 shadow-sm active:scale-95"
+            title={`Currently in ${theme} mode. Click to switch to ${theme === "light" ? "dark" : "light"} mode.`}
+          >
+            {theme === "light" ? (
+              <>
+                <span className="text-amber-500 text-sm">☀️</span>
+                <span className="text-slate-800 font-semibold">Light</span>
+              </>
+            ) : (
+              <>
+                <span className="text-cyan-400 text-sm">🌙</span>
+                <span className="text-gray-200 font-semibold">Dark</span>
+              </>
+            )}
+          </button>
         </div>
         </header>
 

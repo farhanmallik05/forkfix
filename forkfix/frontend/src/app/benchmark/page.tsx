@@ -241,6 +241,32 @@ export default function BenchmarkDashboard() {
   const [filterRepo, setFilterRepo] = useState<string>("all")
   const [selectedTask, setSelectedTask] = useState<BenchmarkTask | null>(null)
   const [runnerSummary, setRunnerSummary] = useState<RunnerSummary | null>(null)
+  const [theme, setTheme] = useState<"light" | "dark">("light")
+
+  useEffect(() => {
+    const saved = (localStorage.getItem("forkfix-theme") as "light" | "dark") || "light"
+    setTheme(saved)
+    if (saved === "dark") {
+      document.documentElement.classList.add("dark")
+      document.documentElement.classList.remove("light")
+    } else {
+      document.documentElement.classList.add("light")
+      document.documentElement.classList.remove("dark")
+    }
+  }, [])
+
+  const toggleTheme = () => {
+    const next = theme === "light" ? "dark" : "light"
+    setTheme(next)
+    localStorage.setItem("forkfix-theme", next)
+    if (next === "dark") {
+      document.documentElement.classList.add("dark")
+      document.documentElement.classList.remove("light")
+    } else {
+      document.documentElement.classList.add("light")
+      document.documentElement.classList.remove("dark")
+    }
+  }
 
   useEffect(() => {
     fetch("/api/benchmark")
@@ -291,10 +317,29 @@ export default function BenchmarkDashboard() {
           <Link
             href="/"
             aria-label="Navigate back to live reality graph"
-            className="px-4 py-2 rounded-lg bg-obsidian-850 hover:bg-obsidian-800 border border-obsidian-700 text-xs font-semibold text-gray-300 hover:text-white transition flex items-center space-x-2"
+            className="px-4 py-2 rounded-lg bg-obsidian-850 hover:bg-obsidian-800 border border-obsidian-700 text-xs font-semibold text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition flex items-center space-x-2 shadow-sm"
           >
             <span>⚡ Back to Reality Canvas</span>
           </Link>
+
+          <button
+            aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
+            onClick={toggleTheme}
+            className="px-3 py-2 rounded-lg bg-obsidian-850 hover:bg-obsidian-800 text-xs font-semibold border border-obsidian-700 transition flex items-center space-x-1.5 shadow-sm active:scale-95"
+            title={`Currently in ${theme} mode. Click to toggle.`}
+          >
+            {theme === "light" ? (
+              <>
+                <span className="text-amber-500 text-sm">☀️</span>
+                <span className="text-slate-800 font-semibold">Light</span>
+              </>
+            ) : (
+              <>
+                <span className="text-cyan-400 text-sm">🌙</span>
+                <span className="text-gray-200 font-semibold">Dark</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
 

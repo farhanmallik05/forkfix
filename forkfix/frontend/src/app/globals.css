@@ -5,9 +5,38 @@
 @import 'diff2html/bundles/css/diff2html.min.css';
 @import '@xyflow/react/dist/style.css';
 
-:root {
+:root, html.light {
+  /* Light Theme (Slate & White) */
+  --obsidian-950: 248 250 252; /* #f8fafc slate-50 */
+  --obsidian-900: 255 255 255; /* #ffffff pure white */
+  --obsidian-850: 241 245 249; /* #f1f5f9 slate-100 */
+  --obsidian-800: 226 232 240; /* #e2e8f0 slate-200 */
+  --obsidian-700: 203 213 225; /* #cbd5e1 slate-300 */
+  --obsidian-600: 148 163 184; /* #94a3b8 slate-400 */
+
+  --background: #f8fafc;
+  --foreground: #0f172a;
+
+  --color-text-main: #0f172a;
+  --color-text-muted: #475569;
+  --color-text-subtle: #64748b;
+}
+
+html.dark {
+  /* Cyber Dark Theme (Obsidian & Emerald) */
+  --obsidian-950: 7 9 12;      /* #07090C */
+  --obsidian-900: 11 13 17;    /* #0B0D11 */
+  --obsidian-850: 16 19 24;    /* #101318 */
+  --obsidian-800: 22 27 34;    /* #161B22 */
+  --obsidian-700: 33 38 45;    /* #21262D */
+  --obsidian-600: 48 54 61;    /* #30363D */
+
   --background: #07090c;
   --foreground: #f3f4f6;
+
+  --color-text-main: #f3f4f6;
+  --color-text-muted: #9ca3af;
+  --color-text-subtle: #6b7280;
 }
 
 body {
@@ -15,27 +44,118 @@ body {
   color: var(--foreground);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   overflow-x: hidden;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* Custom dark scrollbars */
+/* Light mode typography overrides */
+html.light body,
+html:not(.dark) body {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+html.light .text-white,
+html:not(.dark) .text-white {
+  color: #0f172a !important;
+}
+
+html.light .text-gray-100,
+html:not(.dark) .text-gray-100 {
+  color: #0f172a !important;
+}
+
+html.light .text-gray-200,
+html:not(.dark) .text-gray-200 {
+  color: #1e293b !important;
+}
+
+html.light .text-gray-300,
+html:not(.dark) .text-gray-300 {
+  color: #334155 !important;
+}
+
+html.light .text-gray-400,
+html:not(.dark) .text-gray-400 {
+  color: #475569 !important;
+}
+
+html.light .text-gray-500,
+html:not(.dark) .text-gray-500 {
+  color: #64748b !important;
+}
+
+html.light .text-gray-600,
+html:not(.dark) .text-gray-600 {
+  color: #64748b !important;
+}
+
+/* Light mode input placeholders */
+html.light input::placeholder,
+html:not(.dark) input::placeholder,
+html.light textarea::placeholder,
+html:not(.dark) textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Ensure vibrant pill badges and buttons keep readable contrast */
+html.light .bg-cyber-emerald,
+html:not(.dark) .bg-cyber-emerald {
+  color: #052e16 !important;
+}
+
+html.light .preserve-white,
+html:not(.dark) .preserve-white {
+  color: #ffffff !important;
+}
+
+/* Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-::-webkit-scrollbar-track {
+
+html.dark ::-webkit-scrollbar-track {
   background: #0b0d11;
 }
-::-webkit-scrollbar-thumb {
+html.dark ::-webkit-scrollbar-thumb {
   background: #21262d;
   border-radius: 3px;
 }
-::-webkit-scrollbar-thumb:hover {
+html.dark ::-webkit-scrollbar-thumb:hover {
   background: #30363d;
+}
+
+html.light ::-webkit-scrollbar-track,
+html:not(.dark) ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+html.light ::-webkit-scrollbar-thumb,
+html:not(.dark) ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+html.light ::-webkit-scrollbar-thumb:hover,
+html:not(.dark) ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 /* React Flow custom styling */
 .react-flow__renderer {
-  background-color: #07090c !important;
+  background-color: rgb(var(--obsidian-950)) !important;
+}
+
+html.light .react-flow__background pattern circle,
+html:not(.dark) .react-flow__background pattern circle {
+  fill: #cbd5e1 !important;
+}
+
+html.light .react-flow__background pattern line,
+html:not(.dark) .react-flow__background pattern line {
+  stroke: #e2e8f0 !important;
+}
+
+html.dark .react-flow__background pattern circle {
+  fill: #21262d !important;
 }
 
 .react-flow__node {
@@ -45,6 +165,10 @@ body {
 
 .react-flow__node:hover {
   transform: translateY(-2px);
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.15);
+}
+
+html.dark .react-flow__node:hover {
   box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.5);
 }
 
@@ -70,24 +194,60 @@ body {
   }
 }
 
-/* Diff2html dark mode overrides */
-.d2h-wrapper {
+/* Diff2html theme overrides */
+html.dark .d2h-wrapper {
   background-color: #0b0d11 !important;
   color: #e5e7eb !important;
 }
-.d2h-file-header {
+html.dark .d2h-file-header {
   background-color: #161b22 !important;
   border-bottom: 1px solid #30363d !important;
 }
-.d2h-code-line {
+html.dark .d2h-code-line {
   background-color: #0b0d11 !important;
   color: #d1d5db !important;
 }
-.d2h-ins {
+html.dark .d2h-ins {
   background-color: rgba(16, 185, 129, 0.15) !important;
   border-color: rgba(16, 185, 129, 0.3) !important;
 }
-.d2h-del {
+html.dark .d2h-del {
   background-color: rgba(239, 68, 68, 0.15) !important;
   border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+/* Light mode diff styles */
+html.light .d2h-wrapper,
+html:not(.dark) .d2h-wrapper {
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+}
+html.light .d2h-file-header,
+html:not(.dark) .d2h-file-header {
+  background-color: #f8fafc !important;
+  border-bottom: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+html.light .d2h-code-line,
+html:not(.dark) .d2h-code-line {
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+}
+html.light .d2h-code-side-linenumber,
+html:not(.dark) .d2h-code-side-linenumber {
+  background-color: #f8fafc !important;
+  color: #64748b !important;
+  border-right: 1px solid #cbd5e1 !important;
+}
+html.light .d2h-ins,
+html:not(.dark) .d2h-ins {
+  background-color: #ecfdf5 !important;
+  border-color: #a7f3d0 !important;
+  color: #065f46 !important;
+}
+html.light .d2h-del,
+html:not(.dark) .d2h-del {
+  background-color: #fef2f2 !important;
+  border-color: #fecaca !important;
+  color: #991b1b !important;
 }

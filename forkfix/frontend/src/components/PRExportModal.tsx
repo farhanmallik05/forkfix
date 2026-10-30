@@ -28,7 +28,7 @@ export const PRExportModal: React.FC<PRExportModalProps> = ({
   if (!isOpen) return null
 
   const prMarkdown = `## Description
-This pull request autonomously resolves **${taskTitle}** via [Forkfix: Parallel Reality Debugging](https://github.com/farhanmallick2005/forkfix).
+This pull request autonomously resolves **${taskTitle}** via [Forkfix: Parallel Reality Debugging](https://github.com/farhanmallik05/forkfix).
 
 ### ⚡ Verification Evidence
 - **Winning Reality Branch:** \`${winningBranchId}\`

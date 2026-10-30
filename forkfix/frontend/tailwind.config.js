@@ -8,12 +8,12 @@ module.exports = {
     extend: {
       colors: {
         obsidian: {
-          950: "#07090C",
-          900: "#0B0D11",
-          850: "#101318",
-          800: "#161B22",
-          700: "#21262D",
-          600: "#30363D",
+          950: "rgb(var(--obsidian-950) / <alpha-value>)",
+          900: "rgb(var(--obsidian-900) / <alpha-value>)",
+          850: "rgb(var(--obsidian-850) / <alpha-value>)",
+          800: "rgb(var(--obsidian-800) / <alpha-value>)",
+          700: "rgb(var(--obsidian-700) / <alpha-value>)",
+          600: "rgb(var(--obsidian-600) / <alpha-value>)",
         },
         cyber: {
           emerald: "#10B981",
