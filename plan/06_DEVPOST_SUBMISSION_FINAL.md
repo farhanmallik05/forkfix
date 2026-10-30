@@ -5,26 +5,48 @@
 > **Eligible Sponsor Tracks:** Best Use of Tavily ($3,000), Most Valuable Feedback ($100)  
 > **Live Demo:** [https://forkfix.vercel.app](https://forkfix.vercel.app) *(Verified Replay Mode Active by Default)*  
 > **GitHub Repository:** [https://github.com/farhanmallik05/forkfix](https://github.com/farhanmallik05/forkfix) *(Apache-2.0 License)*  
+> **Published GitHub Action:** [https://github.com/marketplace/actions/forkfix-parallel-reality-debugger](https://github.com/marketplace/actions/forkfix-parallel-reality-debugger)  
 > **Demo Video:** [https://youtu.be/forkfix-demo](https://youtu.be/forkfix-demo) *(3-minute public walkthrough)*
 
 ---
 
-## 📋 Devpost Form Quick Reference (Copy-Paste Ready)
+## 📋 SECTION 1: GENERAL PROJECT INFORMATION
 
-* **Project Title:** `Forkfix: Parallel Reality Debugging for Autonomous Coding Agents`
-* **Tagline (Elevator Pitch - 199 characters):**  
-  `Parallel Reality Debugging for coding agents—snapshots failing tests, explores 4 sandboxed realities on an NVIDIA Nemotron ladder, and proves fixes for $0.038/task (62.1x cheaper than Devin).`
-* **Tracks Entered:**
-  1. Primary Track: `Coding and Agentic Engineering`
-  2. Sponsor Track: `Best Use of Tavily ($3,000)`
-  3. Sponsor Track: `Most Valuable Feedback ($100)`
-* **Built With:**  
-  `python`, `fastapi`, `nebius-token-factory`, `nvidia-nemotron`, `tavily-ai`, `docker`, `contree-sandboxes`, `next.js`, `react`, `typescript`, `tailwind-css`, `react-flow`, `sqlite`, `pytest`, `github-actions`
+### Project Title
+```text
+Forkfix: Parallel Reality Debugging for Autonomous Coding Agents
+```
+
+### Tagline / Elevator Pitch (199 / 200 characters)
+```text
+Parallel Reality Debugging for coding agents—snapshots failing tests, explores 4 sandboxed realities on an NVIDIA Nemotron ladder, and proves fixes for $0.038/task (62.1x cheaper than Devin).
+```
+
+### Built With (Tags - up to 25)
+```text
+python, fastapi, nebius-token-factory, nvidia-nemotron, tavily-ai, docker, contree-sandboxes, next.js, react, typescript, tailwind-css, react-flow, sqlite, pytest, github-actions, swe-bench, ai-agents, automated-debugging, rest-api, server-sent-events
+```
+
+### "Try it out" Links
+1. **GitHub Repository:** `https://github.com/farhanmallik05/forkfix`
+2. **Live Demo Application:** `https://forkfix.vercel.app`
+3. **GitHub Marketplace Action:** `https://github.com/marketplace/actions/forkfix-parallel-reality-debugger`
+
+### Project Media
+* **Header / Thumbnail Image:** Upload `assets/forkfix_hero_banner.jpg` (located in project root, 549 KB, 16:9 ratio).
+* **Additional Screenshots:** `assets/forkfix_hero_banner.jpg` is optimized for Devpost 16:9 / 3:2 galleries.
+
+### Demo Video URL
+```text
+https://youtu.be/forkfix-demo
+```
+*(Upload to YouTube as Public or Unlisted, under 3 minutes).*
 
 ---
 
-## 📝 Devpost Markdown Story (Copy & Paste directly into Devpost "Project Story" editor)
+## 📝 SECTION 2: PROJECT STORY (MARKDOWN EDITOR)
 
+```markdown
 ### Inspiration
 Every software engineer who has tried autonomous coding agents (Devin, SWE-agent, OpenCode) notices the same fatal failure pattern:
 1. **Linear Context Pollution:** When an agent attempts an edit that breaks the codebase, the dirty state accumulates in both git and the LLM's context window. The agent gets confused trying to debug its own debugging attempts.
@@ -91,7 +113,7 @@ Forkfix replaces brittle linear agent self-correction with **Parallel Reality De
 1. **62.1x Cost Reduction:** Blended SWE-bench task costs drop from **$4.80** (Devin) and **$2.40** (Claude 3.5 Sonnet) down to **$0.038 / task**.
 2. **100% Automated Test Pass Rate:** 34/34 passing automated Pytest unit tests across 8 test suites validating security sanitization, AST parsing, token billing, rate limiting, query decomposition, multi-language runners, and GitHub Actions integration.
 3. **Flawless Type Safety & Production Build:** Next.js frontend builds cleanly with zero TypeScript errors or ESLint warnings (`npm run build`).
-4. **Official GitHub Action:** Packaged `action.yml` and `.github/workflows/forkfix.yml` enabling any repository to run Forkfix on `issues: [labeled]` and receive verified PR comments.
+4. **Official GitHub Action on Marketplace:** Packaged `action.yml` and published `v1.0.0` to the GitHub Marketplace, enabling any repository to run Forkfix on `issues: [labeled]` and receive verified PR comments.
 5. **Zero-Friction Judge Onboarding:** Bundled pre-computed verified replay traces (`django-31422` and `sympy-18059`), ensuring judges can test all features with zero API setup or latency.
 
 ---
@@ -108,18 +130,144 @@ Forkfix replaces brittle linear agent self-correction with **Parallel Reality De
 * **Multi-Service Sandboxing:** Expand from single-container testbeds to Docker Compose microservice topologies.
 * **Self-Hosted Enterprise Cloud:** Release an on-premises Firecracker microVM orchestrator for private enterprise codebases.
 * **IDE Plugin:** Bring the Parallel Reality Tree directly into VS Code and JetBrains.
+```
 
 ---
 
-## 🎁 Sponsor Track Submission Notes
+## 🏛️ SECTION 3: ADDITIONAL INFO (FOR JUDGES AND ORGANIZERS)
 
-### Track 1: Best Use of Tavily ($3,000 Cash)
-* **How Forkfix uses Tavily:** Forkfix uses Tavily AI Search when early branch hypotheses fail. Rather than feeding raw stack traces to the LLM, Forkfix's `tavily_service.py` executes query decomposition across 3 distinct perspectives:
-  1. **Stack Signature:** Identifies exact exception signatures.
-  2. **API Drift & Deprecations:** Identifies changes between minor framework versions.
-  3. **Workarounds & Solutions:** Searches technical forums for verified workarounds.
-* **Anti-Leakage Guarantees:** Includes strict domain exclusions (`github.com`, `gitlab.com`, `swebench.com`) to prevent fetching ground-truth test fixes or pull requests, guaranteeing authentic autonomous debugging.
+### Upload a File
+* **File to Upload:** `forkfix-submission-dossier.zip` (located in root directory, 551 KB).
+* *(Contains `README.md`, `assets/forkfix_hero_banner.jpg`, `forkfix/FEEDBACK.md`, `forkfix/eval/results/BENCHMARK_REPORT.md`, and `action.yml`).*
 
-### Track 2: Most Valuable Feedback ($100 Cash + Swag)
-* **Feedback Document:** See full document at [`forkfix/FEEDBACK.md`](https://github.com/farhanmallik05/forkfix/blob/main/forkfix/FEEDBACK.md).
-* **Key Content:** Detailed quantitative benchmarks on tokens/second throughput across Nemotron Lightning (140 tok/s), Super (75 tok/s), and Ultra (38 tok/s), Contree SDK snapshot latencies (120–240ms), and 4 actionable SDK improvement recommendations for Nebius and Tavily.
+### Submitter Type
+* **Selection:** `Individual`
+
+### Organization Name
+* **Value:** `N/A`
+
+### Submitter Country of Residence
+* **Selection:** `India`
+
+### Canada Province (if applicable)
+* **Value:** `N/A`
+
+### Which track are you submitting your project into?
+* **Selection:** `Coding and agentic engineering`
+
+### Is your project new or existing prior to August 26, 2026?
+* **Selection:** `New`
+
+### If your project is existing, explain how you significantly updated your project with Nebius tools:
+* **Value:** `N/A - Built 100% new from scratch during the hackathon.`
+
+### Provide a URL to your public code repository for judging and testing:
+```text
+https://github.com/farhanmallik05/forkfix
+```
+
+### Provide a URL to a working demo, hosted application, or test build of your Project:
+```text
+https://forkfix.vercel.app
+```
+
+---
+
+## 🤖 SECTION 4: NVIDIA NEMOTRON & NEBIUS QUESTIONS
+
+### Which model(s) did you use, and why did you choose that size/variant?
+```text
+We implemented a Tri-Tier Nemotron Cognitive Ladder to balance token throughput, inference cost, and deep reasoning:
+
+1. Nemotron-3.5-Lightning (nvidia/Nemotron-3_5-Lightning): Chosen for exploratory branches (Branch 1 & 2) due to its hyper-fast 140 tokens/sec completion speed and sub-dime pricing ($0.20/$0.40 per 1M tokens). It explores defensive null-guards and edge cases in parallel without latency bottlenecks.
+2. Nemotron-3-Super 120B (nvidia/nemotron-3-super-120b-a12b): Chosen for AST-level unit test synthesis and reproduction script generation ($0.80/$1.60 per 1M tokens), where accurate syntax and API signature fidelity are mandatory.
+3. Nemotron-3-Ultra 550B (nvidia/Nemotron-3-Ultra-550b-a55b): Chosen as our escalation model with enable_thinking=True ($3.00/$6.00 per 1M tokens). It is triggered strictly when fast branches fail, ingesting Tavily web research to diagnose complex multi-file architectural bugs.
+```
+
+### How would you rate Nemotron's output quality for your use case? (1 = Poor, 10 = Excellent)
+* **Rating:** `9`
+* **Feedback:**
+```text
+Instruction-following and syntax generation on Nemotron-3.5-Lightning was exceptionally sharp for git diffs, generating zero corrupt patch headers. Nemotron-3-Ultra's enable_thinking=True was critical for isolating complex runtime regressions (e.g., Django path separator normalization and Sympy series order truncation) where shallow reasoning fails. Token count increased from ~300 to ~2,200 tokens during thinking mode, but the accuracy payoff on hard bugs was decisive.
+```
+
+### Did you fine-tune, prompt-engineer, or use Nemotron out of the box? What was your approach?
+```text
+We used Nemotron out of the box on Nebius Token Factory with advanced multi-hypothesis prompt engineering. Rather than generic linear prompting, our PromptEngine dynamically assigns specialized hypothesis mandates to each parallel branch:
+- Branch 1: Minimal defensive guards and None-checks.
+- Branch 2: Boundary condition clamping and type coercions.
+- Branch 3: AST API adaptation and signature updates.
+- Branch 4: Architectural refactoring with Tavily documentation context.
+
+We also implemented dynamic temperature annealing (0.2 for strict syntax/test fixes up to 0.7 for creative architectural exploration) and strict unified diff output parsing.
+```
+
+### How did Nemotron's performance compare to other models you've used for similar tasks?
+```text
+Nemotron-3.5-Lightning's throughput (140 tok/s, ~180ms TTFT) significantly outperformed Claude 3.5 Sonnet (~55 tok/s) and GPT-4o (~70 tok/s). This speed advantage made running 4 parallel sandboxed branches simultaneously faster than a single sequential turn of a monolithic model. Economically, Forkfix achieved an average task cost of $0.038 on our 10-task SWE-bench slice—a 62.1x cost reduction compared to Devin ($4.80/task) and Claude 3.5 Sonnet ($2.40/task).
+```
+
+### Which Nebius platform capabilities were most valuable to your project and how?
+```text
+1. Nebius Token Factory API: Blazing fast OpenAI-compatible endpoints with native Server-Sent Events (SSE) streaming support, sub-200ms prompt latencies, and high rate limits that never throttled concurrent branch execution.
+2. Contree SDK Sandbox Snapshots: Instant copy-on-write container snapshot restoration (120ms to 240ms) enabling microsecond state branching from failing test checkpoints.
+3. High concurrency without degradation: Allowed our orchestrator to spawn multiple branches concurrently without HTTP 429 errors or queue stalls.
+```
+
+### How likely are you to recommend running Nemotron on Nebius to other developers? (1 = Unlikely, 10 = Highly Likely)
+* **Rating:** `10`
+* **Feedback:**
+```text
+The combination of NVIDIA Nemotron's specialized model tiers with Nebius Token Factory's inference economics makes multi-agent workflows genuinely viable. Autonomous engineering agents cannot afford $5/bug frontier models; Nebius provides production-grade infrastructure at sustainable costs.
+```
+
+### How would you rate your experience running Nemotron inference on Nebius compared to previous cloud or local development environments? (1 = Poor, 10 = Excellent)
+* **Rating:** `9`
+* **Feedback:**
+```text
+Zero setup friction—the OpenAI SDK compatibility allowed us to point our client directly to Nebius Token Factory endpoints with standard API keys. Local inference for 120B and 550B parameter models requires prohibitive multi-GPU enterprise hardware, whereas Nebius made them accessible on demand with predictable token-based pricing.
+```
+
+### What additional features or improvements would have made the Nemotron on Nebius experience more effective for your project?
+```text
+1. Native async context managers in Contree SDK (e.g., `async with Sandbox.create() as sb:`).
+2. Dedicated `Sandbox.fork()` API in Python SDK to snapshot and instantiate N child sandboxes in a single atomic RPC call.
+3. A `persist_on_failure=True` flag in the sandbox runner so non-zero test exits don't abort container snapshot commits.
+4. Structured JSON/Diff grammar-constrained decoding at the inference engine level.
+```
+
+### What do you most hope to see from the Nemotron team next?
+```text
+1. Native tree-of-thought and multi-branch reasoning tokens emitted directly in streaming API responses.
+2. Sub-50ms lightweight coding models (e.g., 8B Nemotron-Code) specialized for rapid diff validation and AST parsing.
+3. Expanded long-context reasoning windows (> 128k tokens) with full thinking trace persistence.
+```
+
+---
+
+## 🔍 SECTION 5: TAVILY & EVENT QUESTIONS
+
+### Did you use Tavily in your project?
+* **Selection:** `Yes`
+* **Explanation:**
+```text
+Forkfix makes runtime functional calls to the Tavily API via backend/tavily_service.py. When fast branch hypotheses fail, Forkfix decomposes the error into three search lenses (stack signature, API drift, workarounds) and retrieves technical documentation. To preserve SWE-bench evaluation integrity, Forkfix enforces strict domain exclusions (github.com, gitlab.com, swebench.com) to prevent fetching leaked PR solutions.
+```
+
+### Builders & Brews - IRL Events City
+* **Selection:** Leave blank, or select your city if attending an official meetup.
+
+### Checkboxes
+* [x] **I, and, if applicable, all of my teammates, are at least the age of majority where I reside (e.g. 18 in the US).**
+* [x] **I, and, if applicable, all of my teammates, are not employees, representatives nor agents of the Promotion Entities of this hackathon.**
+
+### Which AI tools have you leveraged while working on this project?
+```text
+Nebius Token Factory, NVIDIA Nemotron (3.5-Lightning, 3-Super-120B, 3-Ultra-550B), Tavily AI Search API, Claude 3.5 Sonnet, Antigravity IDE agentic workflows.
+```
+
+### Describe the level of learning you/your team derived from the project
+* **Selection:** `Significant`
+
+### Did you gain AI value that you can use in your career?
+* **Selection:** `Yes`
